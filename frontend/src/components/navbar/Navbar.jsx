@@ -2,7 +2,14 @@
 import { FiRefreshCw, FiLogOut } from "react-icons/fi";
 import styles from "./Navbar.module.css";
 
-export default function Navbar({ user, title, onRefresh, onLogout, refreshing }) {
+export default function Navbar({
+  user,
+  title,
+  onRefresh,
+  onLogout,
+  refreshing,
+  actions = null
+}) {
   const displayName = user?.name || user?.username || user?.email || "Account";
 
   return (
@@ -12,6 +19,8 @@ export default function Navbar({ user, title, onRefresh, onLogout, refreshing })
       </div>
 
       <div className={styles.right}>
+        {actions ? <div className={styles.alertActions}>{actions}</div> : null}
+
         <button className={styles.refreshBtn} onClick={onRefresh}>
           <FiRefreshCw className={refreshing ? styles.spin : ""} />
           <span>{refreshing ? "Refreshing..." : "Refresh"}</span>

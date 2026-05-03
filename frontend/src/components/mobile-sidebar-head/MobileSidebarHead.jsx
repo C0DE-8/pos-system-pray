@@ -17,7 +17,8 @@ export default function MobileSidebarHead({
   onClose,
   onLogout,
   loggingOut = false,
-  expiryAlertCount = 0
+  expiryAlertCount = 0,
+  lowStockAlertCount = 0
 }) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -75,6 +76,13 @@ export default function MobileSidebarHead({
                   <span className={`${styles.metaChip} ${styles.alertChip}`}>
                     <FiBell />
                     {expiryAlertCount} expiring
+                  </span>
+                )}
+
+                {lowStockAlertCount > 0 && (
+                  <span className={`${styles.metaChip} ${styles.alertChip}`}>
+                    <FiAlertTriangle />
+                    {lowStockAlertCount} low stock
                   </span>
                 )}
               </div>

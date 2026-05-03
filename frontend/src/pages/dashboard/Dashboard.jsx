@@ -39,6 +39,7 @@ import MobileSidebarHead from "../../components/mobile-sidebar-head/MobileSideba
 import useDashboard from "../../hooks/useDashboard";
 import { getMe, logoutUser } from "../../api/authApi";
 import { getExpiryAlerts } from "../../api/settingsApi";
+import { getLowStockProducts } from "../../api/inventoryApi";
 import {
   hasPermission,
   normalizePermissions,
@@ -121,6 +122,21 @@ const getExpiryStatusClass = (daysLeft) => {
   return styles.expiryBadgeInfo;
 };
 
+const getLowStockStatusClass = (stock, lowStock) => {
+  const currentStock = Number(stock || 0);
+  const threshold = Math.max(Number(lowStock || 0), 0);
+
+  if (currentStock <= 0) return styles.expiryBadgeDanger;
+  if (threshold > 0 && currentStock <= Math.max(1, Math.floor(threshold / 2))) {
+    return styles.expiryBadgeDanger;
+  }
+  return styles.expiryBadgeWarning;
+};
+
+const getAlertDismissKey = (key) => {
+  return `${key}_${new Date().toISOString().slice(0, 10)}`;
+};
+
 const normalizeMenuLabel = (label) => {
   if (label === "Inventory") {
     return DEFAULT_INVENTORY_MENU;
@@ -149,7 +165,13 @@ export default function Dashboard() {
   const [expiryAlertDays, setExpiryAlertDays] = useState(7);
   const [expiryLoading, setExpiryLoading] = useState(false);
   const [showExpiryModal, setShowExpiryModal] = useState(false);
+  const [showExpiryBanner, setShowExpiryBanner] = useState(false);
   const [expiryError, setExpiryError] = useState("");
+  const [lowStockAlerts, setLowStockAlerts] = useState([]);
+  const [lowStockLoading, setLowStockLoading] = useState(false);
+  const [showLowStockModal, setShowLowStockModal] = useState(false);
+  const [showLowStockBanner, setShowLowStockBanner] = useState(false);
+  const [lowStockError, setLowStockError] = useState("");
 
   const { dashboardData, loading, refreshing, error, refetch } = useDashboard();
 
@@ -269,10 +291,15 @@ export default function Dashboard() {
 
   useEffect(() => {
     const loadExpiryAlerts = async () => {
-      if (!hasPermission(currentUser, currentPermissions, "settings")) {
+      const canAccessExpiryAlerts =
+        hasPermission(currentUser, currentPermissions, "settings") ||
+        hasPermission(currentUser, currentPermissions, "inventory");
+
+      if (!canAccessExpiryAlerts) {
         setExpiryAlerts([]);
         setExpiryAlertEnabled(false);
         setShowExpiryModal(false);
+        setShowExpiryBanner(false);
         return;
       }
 
@@ -291,11 +318,12 @@ export default function Dashboard() {
         setExpiryAlertDays(alertDays);
 
         if (enabled && list.length > 0) {
-          const hiddenKey = `expiryAlertHidden_${new Date().toISOString().slice(0, 10)}`;
+          const hiddenKey = getAlertDismissKey("expiryAlertHidden");
           const alreadyHidden = localStorage.getItem(hiddenKey) === "true";
-          setShowExpiryModal(!alreadyHidden);
+          setShowExpiryBanner(!alreadyHidden);
         } else {
           setShowExpiryModal(false);
+          setShowExpiryBanner(false);
         }
       } catch (err) {
         setExpiryError(
@@ -304,13 +332,55 @@ export default function Dashboard() {
         setExpiryAlerts([]);
         setExpiryAlertEnabled(false);
         setShowExpiryModal(false);
+        setShowExpiryBanner(false);
       } finally {
         setExpiryLoading(false);
       }
     };
 
     loadExpiryAlerts();
-  }, [currentUser, currentPermissions]);
+  }, [currentUser, currentPermissions, dashboardData]);
+
+  useEffect(() => {
+    const loadLowStockAlerts = async () => {
+      if (!hasPermission(currentUser, currentPermissions, "inventory")) {
+        setLowStockAlerts([]);
+        setShowLowStockModal(false);
+        setShowLowStockBanner(false);
+        return;
+      }
+
+      try {
+        setLowStockLoading(true);
+        setLowStockError("");
+
+        const res = await getLowStockProducts();
+        const list = Array.isArray(res?.data) ? res.data : [];
+
+        setLowStockAlerts(list);
+
+        if (list.length > 0) {
+          const hiddenKey = getAlertDismissKey("lowStockAlertHidden");
+          const alreadyHidden = localStorage.getItem(hiddenKey) === "true";
+          setShowLowStockBanner(!alreadyHidden);
+        } else {
+          setShowLowStockModal(false);
+          setShowLowStockBanner(false);
+        }
+      } catch (err) {
+        setLowStockError(
+          err?.response?.data?.message || err?.message || "Failed to load low stock alerts"
+        );
+        setLowStockAlerts([]);
+        setShowLowStockModal(false);
+        setShowLowStockBanner(false);
+      } finally {
+        setLowStockLoading(false);
+      }
+    };
+
+    loadLowStockAlerts();
+  }, [currentUser, currentPermissions, dashboardData]);
 
   const stats = useMemo(() => {
     if (!dashboardData?.data) return [];
@@ -393,6 +463,7 @@ export default function Dashboard() {
   }, [menu]);
 
   const expiryAlertCount = expiryAlerts.length;
+  const lowStockAlertCount = lowStockAlerts.length;
 
   const clearAuthAndGoLogin = () => {
     if (currentUser) {
@@ -441,15 +512,28 @@ export default function Dashboard() {
     setSidebarCollapsed((prev) => !prev);
   };
 
-  const handleCloseExpiryModal = () => {
-    const hiddenKey = `expiryAlertHidden_${new Date().toISOString().slice(0, 10)}`;
+  const handleDismissExpiryAlert = () => {
+    const hiddenKey = getAlertDismissKey("expiryAlertHidden");
     localStorage.setItem(hiddenKey, "true");
+    setShowExpiryBanner(false);
     setShowExpiryModal(false);
   };
 
   const handleOpenExpiryModal = () => {
     if (!expiryAlertCount) return;
     setShowExpiryModal(true);
+  };
+
+  const handleDismissLowStockAlert = () => {
+    const hiddenKey = getAlertDismissKey("lowStockAlertHidden");
+    localStorage.setItem(hiddenKey, "true");
+    setShowLowStockBanner(false);
+    setShowLowStockModal(false);
+  };
+
+  const handleOpenLowStockModal = () => {
+    if (!lowStockAlertCount) return;
+    setShowLowStockModal(true);
   };
 
   if (bootLoading || loading || !menuReady) {
@@ -599,6 +683,7 @@ export default function Dashboard() {
           onLogout={handleLogout}
           loggingOut={loggingOut}
           expiryAlertCount={expiryAlertCount}
+          lowStockAlertCount={lowStockAlertCount}
         />
 
         <Sidebar
@@ -630,7 +715,8 @@ export default function Dashboard() {
           </div>
 
           <div className={styles.mobileTopbarActions}>
-            {hasPermission(currentUser, currentPermissions, "settings") && (
+            {(hasPermission(currentUser, currentPermissions, "settings") ||
+              hasPermission(currentUser, currentPermissions, "inventory")) && (
               <button
                 type="button"
                 className={`${styles.alertBellBtn} ${
@@ -643,6 +729,23 @@ export default function Dashboard() {
                 <FiBell />
                 {expiryAlertCount > 0 && (
                   <span className={styles.alertBellCount}>{expiryAlertCount}</span>
+                )}
+              </button>
+            )}
+
+            {hasPermission(currentUser, currentPermissions, "inventory") && (
+              <button
+                type="button"
+                className={`${styles.alertBellBtn} ${
+                  lowStockAlertCount > 0 ? styles.alertBellBtnActive : ""
+                }`}
+                onClick={handleOpenLowStockModal}
+                disabled={!lowStockAlertCount}
+                aria-label="Open low stock alerts"
+              >
+                <FiAlertTriangle />
+                {lowStockAlertCount > 0 && (
+                  <span className={styles.alertBellCount}>{lowStockAlertCount}</span>
                 )}
               </button>
             )}
@@ -665,11 +768,51 @@ export default function Dashboard() {
             onRefresh={() => refetch(true)}
             onLogout={handleLogout}
             refreshing={refreshing}
+            actions={
+              <>
+                {(hasPermission(currentUser, currentPermissions, "settings") ||
+                  hasPermission(currentUser, currentPermissions, "inventory")) && (
+                  <button
+                    type="button"
+                    className={`${styles.alertBellBtn} ${
+                      expiryAlertCount > 0 ? styles.alertBellBtnActive : ""
+                    }`}
+                    onClick={handleOpenExpiryModal}
+                    disabled={!expiryAlertCount}
+                    aria-label="Open expiry alerts"
+                  >
+                    <FiBell />
+                    {expiryAlertCount > 0 && (
+                      <span className={styles.alertBellCount}>{expiryAlertCount}</span>
+                    )}
+                  </button>
+                )}
+
+                {hasPermission(currentUser, currentPermissions, "inventory") && (
+                  <button
+                    type="button"
+                    className={`${styles.alertBellBtn} ${
+                      lowStockAlertCount > 0 ? styles.alertBellBtnActive : ""
+                    }`}
+                    onClick={handleOpenLowStockModal}
+                    disabled={!lowStockAlertCount}
+                    aria-label="Open low stock alerts"
+                  >
+                    <FiAlertTriangle />
+                    {lowStockAlertCount > 0 && (
+                      <span className={styles.alertBellCount}>{lowStockAlertCount}</span>
+                    )}
+                  </button>
+                )}
+              </>
+            }
           />
         </div>
 
-        {hasPermission(currentUser, currentPermissions, "settings") &&
-          expiryAlertEnabled && (
+        {(hasPermission(currentUser, currentPermissions, "settings") ||
+          hasPermission(currentUser, currentPermissions, "inventory")) &&
+          expiryAlertEnabled &&
+          showExpiryBanner && (
             <div className={styles.expiryInlineBar}>
               <div className={styles.expiryInlineLeft}>
                 <div className={styles.expiryInlineIcon}>
@@ -698,12 +841,68 @@ export default function Dashboard() {
                     View Alerts
                   </button>
                 )}
+
+                <button
+                  type="button"
+                  className={styles.expiryCloseBtn}
+                  onClick={handleDismissExpiryAlert}
+                  aria-label="Dismiss expiry alerts"
+                >
+                  <FiX />
+                </button>
+              </div>
+            </div>
+          )}
+
+        {hasPermission(currentUser, currentPermissions, "inventory") &&
+          showLowStockBanner && (
+            <div className={styles.expiryInlineBar}>
+              <div className={styles.expiryInlineLeft}>
+                <div className={styles.expiryInlineIcon}>
+                  <FiBell />
+                </div>
+
+                <div className={styles.expiryInlineText}>
+                  <h4>Low Stock Alerts</h4>
+                  <p>
+                    {lowStockLoading
+                      ? "Checking products that reached the low stock limit..."
+                      : lowStockAlertCount > 0
+                      ? `${lowStockAlertCount} item(s) are at or below their low stock threshold.`
+                      : "No low stock items right now."}
+                  </p>
+                </div>
+              </div>
+
+              <div className={styles.expiryInlineActions}>
+                {lowStockAlertCount > 0 && (
+                  <button
+                    type="button"
+                    className={styles.primaryBtn}
+                    onClick={handleOpenLowStockModal}
+                  >
+                    View Alerts
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className={styles.expiryCloseBtn}
+                  onClick={handleDismissLowStockAlert}
+                  aria-label="Dismiss low stock alerts"
+                >
+                  <FiX />
+                </button>
               </div>
             </div>
           )}
 
         {expiryError && (
           <div className={styles.errorBox}>{expiryError}</div>
+        )}
+
+        {lowStockError && (
+          <div className={styles.errorBox}>{lowStockError}</div>
         )}
 
         {error ? (
@@ -733,7 +932,7 @@ export default function Dashboard() {
       </nav>
 
       {showExpiryModal && (
-        <div className={styles.expiryModalOverlay} onClick={handleCloseExpiryModal}>
+        <div className={styles.expiryModalOverlay} onClick={handleDismissExpiryAlert}>
           <div
             className={styles.expiryModalCard}
             onClick={(e) => e.stopPropagation()}
@@ -755,7 +954,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 className={styles.expiryCloseBtn}
-                onClick={handleCloseExpiryModal}
+                onClick={handleDismissExpiryAlert}
                 aria-label="Close expiry alerts"
               >
                 <FiX />
@@ -819,7 +1018,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 className={styles.secondaryBtn}
-                onClick={handleCloseExpiryModal}
+                onClick={handleDismissExpiryAlert}
               >
                 Close
               </button>
@@ -829,13 +1028,119 @@ export default function Dashboard() {
                   type="button"
                   className={styles.primaryBtn}
                   onClick={() => {
-                    handleCloseExpiryModal();
+                    handleDismissExpiryAlert();
                     handleMenuChange("Settings");
                   }}
                 >
                   Open Settings
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLowStockModal && (
+        <div className={styles.expiryModalOverlay} onClick={handleDismissLowStockAlert}>
+          <div
+            className={styles.expiryModalCard}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.expiryModalHeader}>
+              <div className={styles.expiryModalTitleWrap}>
+                <div className={styles.expiryModalIcon}>
+                  <FiAlertTriangle />
+                </div>
+
+                <div>
+                  <h3 className={styles.expiryModalTitle}>Low Stock Alerts</h3>
+                  <p className={styles.expiryModalSubtitle}>
+                    Products at or below their stock threshold
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className={styles.expiryCloseBtn}
+                onClick={handleDismissLowStockAlert}
+                aria-label="Close low stock alerts"
+              >
+                <FiX />
+              </button>
+            </div>
+
+            <div className={styles.expiryModalBody}>
+              {lowStockAlertCount === 0 ? (
+                <div className={styles.expiryEmptyState}>
+                  <FiAlertTriangle />
+                  <p>No low stock items right now.</p>
+                </div>
+              ) : (
+                <div className={styles.expiryList}>
+                  {lowStockAlerts.map((item) => (
+                    <div key={item.id} className={styles.expiryItem}>
+                      <div className={styles.expiryItemMain}>
+                        <div className={styles.expiryItemTop}>
+                          <div className={styles.expiryItemNameWrap}>
+                            <span className={styles.expiryItemIcon}>
+                              {item.icon || "📦"}
+                            </span>
+                            <div>
+                              <h4 className={styles.expiryItemName}>{item.name}</h4>
+                              <p className={styles.expiryItemMeta}>
+                                {item.category_name || "Uncategorized"} • Stock:{" "}
+                                {item.stock ?? 0} / Threshold: {item.low_stock ?? 0}
+                              </p>
+                            </div>
+                          </div>
+
+                          <span
+                            className={`${styles.expiryBadge} ${getLowStockStatusClass(
+                              item.stock,
+                              item.low_stock
+                            )}`}
+                          >
+                            {Number(item.stock ?? 0) <= 0
+                              ? "Out of stock"
+                              : "Low stock"}
+                          </span>
+                        </div>
+
+                        <div className={styles.expiryItemBottom}>
+                          <span className={styles.expiryDate}>
+                            Remaining Stock: {item.stock ?? 0}
+                          </span>
+                          <span className={styles.expiryHuman}>
+                            Low stock level: {item.low_stock ?? 0}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className={styles.expiryModalFooter}>
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                onClick={handleDismissLowStockAlert}
+              >
+                Close
+              </button>
+
+              <button
+                type="button"
+                className={styles.primaryBtn}
+                onClick={() => {
+                  handleDismissLowStockAlert();
+                  handleMenuChange("Low Stock Products");
+                }}
+              >
+                Open Inventory
+              </button>
             </div>
           </div>
         </div>

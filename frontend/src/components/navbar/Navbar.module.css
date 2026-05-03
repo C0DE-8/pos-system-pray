@@ -22,6 +22,12 @@
   flex-wrap: wrap;
 }
 
+.alertActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .refreshBtn,
 .logoutBtn {
   border: none;

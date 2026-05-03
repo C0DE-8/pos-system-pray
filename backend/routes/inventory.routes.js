@@ -1,7 +1,7 @@
 const express = require("express");
 const { query, pool } = require("../config/db");
 const { authenticateToken, requirePermission } = require("../middleware/auth");
-const { ensureBusinessContext } = require("../utils/tenant");
+const { ensureBusinessContext, isAdmin } = require("../utils/tenant");
 const {
   deductUnitInventory,
   loadHierarchy,
@@ -58,6 +58,20 @@ async function ensureWarehouseStockRow(productId) {
 // /inventory/low-stock
 router.get("/low-stock", requirePermission("inventory"), async (req, res) => {
   try {
+    if (!ensureBusinessContext(req, res)) return;
+
+    const branchId = req.query?.branch_id ? Number(req.query.branch_id) : null;
+    const scopedBranchSql = !isAdmin(req.user)
+      ? "AND p.branch_id = ?"
+      : branchId
+        ? "AND p.branch_id = ?"
+        : "";
+    const scopedParams = !isAdmin(req.user)
+      ? [req.user.business_id, req.user.branch_id]
+      : branchId
+        ? [req.user.business_id, branchId]
+        : [req.user.business_id];
+
     const rows = await query(`
       SELECT 
         p.id,
@@ -76,12 +90,14 @@ router.get("/low-stock", requirePermission("inventory"), async (req, res) => {
       FROM products p
       LEFT JOIN categories c ON c.id = p.category_id
       WHERE p.is_active = 1
+        AND p.business_id = ?
         AND p.is_unlimited = 0
         AND p.stock IS NOT NULL
         AND p.low_stock IS NOT NULL
         AND p.stock <= p.low_stock
+        ${scopedBranchSql}
       ORDER BY p.stock ASC, p.name ASC
-    `);
+    `, scopedParams);
 
     res.json({ success: true, data: rows });
   } catch (error) {

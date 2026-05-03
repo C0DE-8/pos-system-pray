@@ -1,8 +1,8 @@
 const express = require("express");
 const { query } = require("../config/db");
 const moment = require("moment");
-const { authenticateToken, requirePermission } = require("../middleware/auth");
-const { ensureBusinessContext } = require("../utils/tenant");
+const { authenticateToken, requirePermission, requireAnyPermission } = require("../middleware/auth");
+const { ensureBusinessContext, isAdmin } = require("../utils/tenant");
 
 const router = express.Router();
 
@@ -56,7 +56,10 @@ router.put("/", requirePermission("settings"), async (req, res) => {
   }
 });
 // settings/expiry-alerts GET expiry alerts
-router.get("/expiry-alerts",async (req, res) => {
+router.get(
+  "/expiry-alerts",
+  requireAnyPermission("settings", "inventory"),
+  async (req, res) => {
   try {
     if (!ensureBusinessContext(req, res)) return;
     const settingsRows = await query("SELECT * FROM settings WHERE id = 1 LIMIT 1");
@@ -79,6 +82,18 @@ router.get("/expiry-alerts",async (req, res) => {
     }
 
     // remove DATEDIFF from SQL
+    const branchId = req.query?.branch_id ? Number(req.query.branch_id) : null;
+    const scopedBranchSql = !isAdmin(req.user)
+      ? "AND p.branch_id = ?"
+      : branchId
+        ? "AND p.branch_id = ?"
+        : "";
+    const scopedParams = !isAdmin(req.user)
+      ? [req.user.business_id, req.user.branch_id]
+      : branchId
+        ? [req.user.business_id, branchId]
+        : [req.user.business_id];
+
     const rows = await query(
       `
       SELECT
@@ -95,15 +110,16 @@ router.get("/expiry-alerts",async (req, res) => {
         AND p.business_id = ?
         AND p.has_expiry = 1
         AND p.expiry_date IS NOT NULL
+        ${scopedBranchSql}
       ORDER BY p.expiry_date ASC
       `
-    , [req.user.business_id]);
+    , scopedParams);
 
-    const today = moment();
+    const today = moment().startOf("day");
 
     const filtered = rows
       .map(item => {
-        const expiry = moment(item.expiry_date);
+        const expiry = moment(item.expiry_date).startOf("day");
         const days_left = expiry.diff(today, "days");
 
         return {
