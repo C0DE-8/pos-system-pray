@@ -58,6 +58,32 @@ const EMPTY_SALES_SUMMARY = {
   trend: []
 };
 
+const buildSevenDayTrend = (sales) => {
+  const dailyMap = new Map();
+
+  for (let index = 6; index >= 0; index -= 1) {
+    const day = moment().startOf("day").subtract(index, "days");
+    dailyMap.set(day.format("YYYY-MM-DD"), {
+      label: day.format("ddd"),
+      total: 0
+    });
+  }
+
+  sales.forEach((sale) => {
+    const saleDate = sale?.sale_date || sale?.created_at;
+    if (!saleDate) return;
+    if (String(sale?.status || "").toLowerCase() === "refunded") return;
+
+    const key = moment(saleDate).format("YYYY-MM-DD");
+    if (!dailyMap.has(key)) return;
+
+    const current = dailyMap.get(key);
+    current.total += Number(sale.total_amount || sale.total || 0);
+  });
+
+  return Array.from(dailyMap.values());
+};
+
 export default function SalesManagement() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -442,10 +468,7 @@ export default function SalesManagement() {
   const monthStats = salesSummary.month || EMPTY_SALES_SUMMARY.month;
   const overallStats = salesSummary.overall || EMPTY_SALES_SUMMARY.overall;
   const filteredStats = salesSummary.filtered || EMPTY_SALES_SUMMARY.filtered;
-  const chartData = (salesSummary.trend || []).map((item) => ({
-    label: item.label,
-    total: Number(item.revenue || 0)
-  }));
+  const chartData = useMemo(() => buildSevenDayTrend(filteredSales), [filteredSales]);
 
   const chartMax = Math.max(...chartData.map((item) => item.total), 1);
 
@@ -506,6 +529,10 @@ export default function SalesManagement() {
   const downloadExcel = () => {
     try {
       const workbook = XLSX.utils.book_new();
+      const exportRows = paginatedSales;
+      const exportTotal = exportRows
+        .filter((sale) => !isRefundedSale(sale))
+        .reduce((sum, sale) => sum + Number(sale.total_amount || sale.total || 0), 0);
 
       const reportMeta = [
         { Field: "Business Name", Value: settings.business_name },
@@ -515,14 +542,22 @@ export default function SalesManagement() {
         { Field: "Generated On", Value: formatDateTime(new Date()) },
         { Field: "Date Filter", Value: getActiveDateLabel() },
         { Field: "Payment Filter", Value: getPaymentFilterLabel() },
+        { Field: "Current Page", Value: currentPage },
+        { Field: "Rows On Page", Value: exportRows.length },
         { Field: "Filtered Records", Value: filteredSales.length },
-        { Field: "Grand Total", Value: Number(filteredSalesTotal) }
+        { Field: "Filtered Revenue", Value: Number(filteredSalesTotal) },
+        { Field: "Page Revenue", Value: Number(exportTotal) }
       ];
 
-      const dataSheet = buildReportRows(filteredSales);
+      const dataSheet = buildReportRows(exportRows);
+      const trendSheet = chartData.map((item) => ({
+        Day: item.label,
+        Revenue: Number(item.total || 0)
+      }));
 
       const workbookMeta = XLSX.utils.json_to_sheet(reportMeta);
       const workbookSales = XLSX.utils.json_to_sheet(dataSheet);
+      const workbookTrend = XLSX.utils.json_to_sheet(trendSheet);
 
       workbookMeta["!cols"] = [{ wch: 20 }, { wch: 40 }];
       workbookSales["!cols"] = [
@@ -537,9 +572,11 @@ export default function SalesManagement() {
         { wch: 34 },
         { wch: 20 }
       ];
+      workbookTrend["!cols"] = [{ wch: 14 }, { wch: 18 }];
 
       XLSX.utils.book_append_sheet(workbook, workbookMeta, "Report Info");
-      XLSX.utils.book_append_sheet(workbook, workbookSales, "Sales");
+      XLSX.utils.book_append_sheet(workbook, workbookSales, `Sales Page ${currentPage}`);
+      XLSX.utils.book_append_sheet(workbook, workbookTrend, "7-Day Trend");
 
       XLSX.writeFile(
         workbook,
@@ -552,7 +589,12 @@ export default function SalesManagement() {
 
   const downloadWordDoc = () => {
     try {
-      const rowsHtml = filteredSales
+      const exportRows = paginatedSales;
+      const exportTotal = exportRows
+        .filter((sale) => !isRefundedSale(sale))
+        .reduce((sum, sale) => sum + Number(sale.total_amount || sale.total || 0), 0);
+
+      const rowsHtml = exportRows
         .map(
           (sale) => `
             <tr>
@@ -596,6 +638,8 @@ export default function SalesManagement() {
               }
               th { background: #f1f5f9; }
               .totalRow td { font-weight: bold; background: #f8fafc; }
+              .trendList { margin-top: 18px; padding-left: 18px; }
+              .trendList li { margin-bottom: 6px; }
             </style>
           </head>
           <body>
@@ -607,8 +651,11 @@ export default function SalesManagement() {
               <p><strong>Phone:</strong> ${settings.business_phone}</p>
               <p><strong>Date Filter:</strong> ${getActiveDateLabel()}</p>
               <p><strong>Payment Filter:</strong> ${getPaymentFilterLabel()}</p>
+              <p><strong>Current Page:</strong> ${currentPage}</p>
+              <p><strong>Rows On Page:</strong> ${exportRows.length}</p>
               <p><strong>Filtered Records:</strong> ${filteredSales.length}</p>
-              <p><strong>Grand Total:</strong> ${formatMoney(filteredSalesTotal)}</p>
+              <p><strong>Filtered Revenue:</strong> ${formatMoney(filteredSalesTotal)}</p>
+              <p><strong>Page Revenue:</strong> ${formatMoney(exportTotal)}</p>
             </div>
 
             <table>
@@ -626,12 +673,19 @@ export default function SalesManagement() {
               <tbody>
                 ${rowsHtml}
                 <tr class="totalRow">
-                  <td colspan="4">Grand Total</td>
-                  <td>${formatMoney(filteredSalesTotal)}</td>
+                  <td colspan="4">Page Total</td>
+                  <td>${formatMoney(exportTotal)}</td>
                   <td colspan="2"></td>
                 </tr>
               </tbody>
             </table>
+
+            <h2>7-Day Sales Trend</h2>
+            <ul class="trendList">
+              ${chartData
+                .map((item) => `<li><strong>${item.label}:</strong> ${formatMoney(item.total)}</li>`)
+                .join("")}
+            </ul>
           </body>
         </html>
       `;
