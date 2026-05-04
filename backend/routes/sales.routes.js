@@ -13,6 +13,7 @@ const router = express.Router();
 router.use(authenticateToken);
 
 const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const SALES_DATE_SQL = "s.sale_date";
 
 function normalizeDateInput(value) {
   if (!value || typeof value !== "string") return null;
@@ -92,11 +93,11 @@ function buildSalesWhere(req, options = {}) {
 
   if (dateBounds) {
     if (DATE_ONLY_REGEX.test(dateBounds.start.slice(0, 10))) {
-      where.push("s.sale_date BETWEEN ? AND ?");
+      where.push(`${SALES_DATE_SQL} BETWEEN ? AND ?`);
       params.push(dateBounds.start, dateBounds.end);
     } else {
-      where.push(`s.sale_date >= ${dateBounds.start}`);
-      where.push(`s.sale_date < ${dateBounds.end}`);
+      where.push(`${SALES_DATE_SQL} >= ${dateBounds.start}`);
+      where.push(`${SALES_DATE_SQL} < ${dateBounds.end}`);
     }
   }
 
@@ -177,7 +178,10 @@ function buildRecentDayEntries() {
     date.setHours(0, 0, 0, 0);
     date.setDate(date.getDate() - index);
 
-    const key = date.toISOString().slice(0, 10);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const key = `${year}-${month}-${day}`;
     const label = date.toLocaleDateString("en-US", { weekday: "short" });
 
     days.push({ key, label });
@@ -186,31 +190,158 @@ function buildRecentDayEntries() {
   return days;
 }
 
+async function getSalesTrendRows(req) {
+  const trendAnchorWhere = buildSalesWhere(
+    req,
+    {
+      includeDateRange: false,
+      includeSearch: false,
+      includeStatus: false,
+      includePayment: false
+    }
+  );
+  const [anchorRow] = await query(
+    `
+      SELECT MAX(${SALES_DATE_SQL}) AS latest_sale_date
+      FROM sales s
+      LEFT JOIN users u ON u.id = s.cashier_id
+      ${trendAnchorWhere.sql}
+    `,
+    trendAnchorWhere.params
+  );
+
+  const anchorDate = anchorRow?.latest_sale_date
+    ? new Date(anchorRow.latest_sale_date)
+    : new Date();
+
+  const recentDays = Array.from({ length: 7 }, (_, offset) => {
+    const date = new Date(anchorDate);
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (6 - offset));
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return {
+      key: `${year}-${month}-${day}`,
+      label: date.toLocaleDateString("en-US", { weekday: "short" })
+    };
+  });
+
+  const trendKeys = recentDays.map((entry) => entry.key);
+  const trendWhere = buildSalesWhere(
+    {
+      ...req,
+      query: {
+        ...req.query,
+        date_from: trendKeys[0],
+        date_to: trendKeys[trendKeys.length - 1]
+      }
+    },
+    {
+      includeSearch: false,
+      includeStatus: false,
+      includePayment: false
+    }
+  );
+
+  const trendRows = await query(
+    `
+      SELECT
+        DATE(${SALES_DATE_SQL}) AS sale_day,
+        COUNT(*) AS total_sales,
+        COALESCE(
+          SUM(
+            CASE
+              WHEN LOWER(COALESCE(s.status, 'paid')) = 'refunded' THEN 0
+              ELSE COALESCE(s.total, 0)
+            END
+          ),
+          0
+        ) AS revenue
+      FROM sales s
+      LEFT JOIN users u ON u.id = s.cashier_id
+      ${trendWhere.sql}
+      GROUP BY DATE(${SALES_DATE_SQL})
+      ORDER BY sale_day ASC
+    `,
+    trendWhere.params
+  );
+
+  const trendMap = new Map(
+    trendRows.map((row) => [
+      String(row.sale_day).slice(0, 10),
+      {
+        totalSales: Number(row.total_sales || 0),
+        revenue: Number(row.revenue || 0)
+      }
+    ])
+  );
+
+  return recentDays.map((entry) => ({
+    label: entry.label,
+    date: entry.key,
+    totalSales: trendMap.get(entry.key)?.totalSales || 0,
+    revenue: trendMap.get(entry.key)?.revenue || 0
+  }));
+}
+
 // sales/ all sales
 router.get("/", requirePermission("sales"), branchAccessMiddleware, async (req, res) => {
   try {
     if (!ensureBusinessContext(req, res)) return;
 
-    const branchId = req.query.branch_id;
-    const where = ["s.business_id = ?"];
-    const params = [req.user.business_id];
-    if (!isAdmin(req.user)) {
-      where.push("s.branch_id = ?");
-      params.push(req.user.branch_id);
-    } else if (branchId) {
-      where.push("s.branch_id = ?");
-      params.push(branchId);
-    }
+    const parsedPage = Number.parseInt(req.query.page, 10);
+    const parsedPerPage = Number.parseInt(
+      req.query.per_page ?? req.query.perPage,
+      10
+    );
+    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const perPage =
+      Number.isFinite(parsedPerPage) && parsedPerPage > 0
+        ? Math.min(parsedPerPage, 100)
+        : 10;
+    const offset = (page - 1) * perPage;
 
-    const rows = await query(`
-      SELECT s.*, u.name AS cashier_name
-      FROM sales s
-      JOIN users u ON u.id = s.cashier_id
-      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-      ORDER BY s.id DESC
-      LIMIT 200
-    `, params);
-    res.json({ success: true, data: rows });
+    const { sql: whereSql, params } = buildSalesWhere(req);
+    const [countRow] = await query(
+      `
+        SELECT COUNT(*) AS total
+        FROM sales s
+        LEFT JOIN users u ON u.id = s.cashier_id
+        ${whereSql}
+      `,
+      params
+    );
+
+    const total = Number(countRow?.total || 0);
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    const safePage = Math.min(page, totalPages);
+    const safeOffset = (safePage - 1) * perPage;
+
+    const rows = await query(
+      `
+        SELECT s.*, u.name AS cashier_name
+        FROM sales s
+        LEFT JOIN users u ON u.id = s.cashier_id
+        ${whereSql}
+        ORDER BY s.id DESC
+        LIMIT ? OFFSET ?
+      `,
+      [...params, perPage, safeOffset]
+    );
+
+    res.json({
+      success: true,
+      data: rows,
+      pagination: {
+        page: safePage,
+        per_page: perPage,
+        total,
+        total_pages: totalPages
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -313,23 +444,6 @@ router.get("/summary", requirePermission("sales"), branchAccessMiddleware, async
       includePayment: false
     };
     const overallWhere = buildSalesWhere(req, overviewBaseOptions);
-    const recentDays = buildRecentDayEntries();
-    const trendKeys = recentDays.map((entry) => entry.key);
-    const trendWhere = buildSalesWhere(
-      {
-        ...req,
-        query: {
-          ...req.query,
-          date_from: trendKeys[0],
-          date_to: trendKeys[trendKeys.length - 1]
-        }
-      },
-      {
-        includeSearch: false,
-        includeStatus: false,
-        includePayment: false
-      }
-    );
     const todayWhere = buildSalesWhere(
       {
         ...req,
@@ -385,46 +499,15 @@ router.get("/summary", requirePermission("sales"), branchAccessMiddleware, async
       }
     );
 
-    const [todayRows, weekRows, monthRows, overallRows, filteredRows, trendRows] =
+    const [todayRows, weekRows, monthRows, overallRows, filteredRows, trend] =
       await Promise.all([
         query(buildSalesAggregateSql(todayWhere.sql), todayWhere.params),
         query(buildSalesAggregateSql(weekWhere.sql), weekWhere.params),
         query(buildSalesAggregateSql(monthWhere.sql), monthWhere.params),
         query(buildSalesAggregateSql(overallWhere.sql), overallWhere.params),
         query(buildSalesAggregateSql(filteredWhere.sql), filteredWhere.params),
-        query(
-          `
-            SELECT
-              DATE(s.sale_date) AS sale_day,
-              COUNT(*) AS total_sales,
-              COALESCE(
-                SUM(
-                  CASE
-                    WHEN LOWER(COALESCE(s.status, 'paid')) = 'refunded' THEN 0
-                    ELSE COALESCE(s.total, 0)
-                  END
-                ),
-                0
-              ) AS revenue
-            FROM sales s
-            LEFT JOIN users u ON u.id = s.cashier_id
-            ${trendWhere.sql}
-            GROUP BY DATE(s.sale_date)
-            ORDER BY sale_day ASC
-          `,
-          trendWhere.params
-        )
+        getSalesTrendRows(req)
       ]);
-
-    const trendMap = new Map(
-      trendRows.map((row) => [
-        String(row.sale_day).slice(0, 10),
-        {
-          totalSales: Number(row.total_sales || 0),
-          revenue: Number(row.revenue || 0)
-        }
-      ])
-    );
 
     res.json({
       success: true,
@@ -434,13 +517,26 @@ router.get("/summary", requirePermission("sales"), branchAccessMiddleware, async
         month: formatAggregateRow(monthRows[0]),
         overall: formatAggregateRow(overallRows[0]),
         filtered: formatAggregateRow(filteredRows[0]),
-        trend: recentDays.map((entry) => ({
-          label: entry.label,
-          date: entry.key,
-          totalSales: trendMap.get(entry.key)?.totalSales || 0,
-          revenue: trendMap.get(entry.key)?.revenue || 0
-        }))
+        trend
       }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+router.get("/trend", requirePermission("sales"), branchAccessMiddleware, async (req, res) => {
+  try {
+    if (!ensureBusinessContext(req, res)) return;
+
+    const trend = await getSalesTrendRows(req);
+
+    res.json({
+      success: true,
+      data: trend
     });
   } catch (error) {
     res.status(500).json({

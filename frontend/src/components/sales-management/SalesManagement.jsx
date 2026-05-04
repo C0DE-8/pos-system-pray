@@ -23,7 +23,6 @@ import {
   getSales,
   getSaleById,
   refundSale,
-  getSalesByPaymentType,
   getSalesSummary
 } from "../../api/salesApi";
 import { getSettings } from "../../api/settingsApi";
@@ -116,6 +115,13 @@ export default function SalesManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [detailItemsPage, setDetailItemsPage] = useState(1);
   const [salesSummary, setSalesSummary] = useState(EMPTY_SALES_SUMMARY);
+  const [salesPagination, setSalesPagination] = useState({
+    page: 1,
+    perPage: 10,
+    total: 0,
+    totalPages: 1,
+    fromServer: false
+  });
 
   const SALES_PER_PAGE = 10;
   const SALE_ITEMS_PER_PAGE = 8;
@@ -126,14 +132,7 @@ export default function SalesManagement() {
 
   const loadInitialData = async () => {
     try {
-      setLoading(true);
-
-      const [salesRes, settingsRes] = await Promise.all([
-        getSales(),
-        getSettings().catch(() => ({ data: {} }))
-      ]);
-
-      setSales(salesRes?.data || []);
+      const settingsRes = await getSettings().catch(() => ({ data: {} }));
 
       const settingsData = settingsRes?.data || {};
       setSettings({
@@ -165,82 +164,43 @@ export default function SalesManagement() {
       });
     } catch (err) {
       toast.error(err?.response?.data?.message || "Failed to load sales");
-    } finally {
-      setLoading(false);
     }
   };
 
-  const fetchSales = async () => {
+  const fetchSales = async (params = {}) => {
     try {
       setLoading(true);
 
-      const res = await getSales();
-      setSales(res?.data || []);
+      const res = await getSales(params);
+      const rows = Array.isArray(res?.data) ? res.data : [];
+      const hasServerPagination = Boolean(res?.pagination);
+      const fallbackTotal = Number(res?.count || rows.length || 0);
+      const fallbackPage = Number(params.page || 1);
+      const fallbackTotalPages = Math.max(
+        1,
+        Math.ceil(fallbackTotal / SALES_PER_PAGE)
+      );
+
+      setSales(rows);
+      setSalesPagination({
+        page: Number(res?.pagination?.page || fallbackPage),
+        perPage: Number(res?.pagination?.per_page || SALES_PER_PAGE),
+        total: Number(res?.pagination?.total || fallbackTotal),
+        totalPages: Number(res?.pagination?.total_pages || fallbackTotalPages),
+        fromServer: hasServerPagination
+      });
     } catch (err) {
+      setSales([]);
+      setSalesPagination({
+        page: 1,
+        perPage: SALES_PER_PAGE,
+        total: 0,
+        totalPages: 1,
+        fromServer: false
+      });
       toast.error(err?.response?.data?.message || "Failed to load sales");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchSalesByPayment = async (filters = {}) => {
-    try {
-      setLoading(true);
-
-      const res = await getSalesByPaymentType(filters);
-      setSales(res?.data || []);
-
-      const niceType = filters.type || "all";
-      const niceSplit = filters.split_with ? ` / ${filters.split_with}` : "";
-      toast.success(`Showing ${niceType}${niceSplit} sales`);
-    } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to filter sales");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePaymentFilterChange = async (value) => {
-    setPaymentFilter(value);
-
-    if (value === "all") {
-      await fetchSales();
-      return;
-    }
-
-    if (value === "cash") {
-      await fetchSalesByPayment({ type: "cash" });
-      return;
-    }
-
-    if (value === "card") {
-      await fetchSalesByPayment({ type: "card" });
-      return;
-    }
-
-    if (value === "transfer") {
-      await fetchSalesByPayment({ type: "transfer" });
-      return;
-    }
-
-    if (value === "split") {
-      await fetchSalesByPayment({ type: "split" });
-      return;
-    }
-
-    if (value === "split-cash") {
-      await fetchSalesByPayment({ type: "split", split_with: "cash" });
-      return;
-    }
-
-    if (value === "split-card") {
-      await fetchSalesByPayment({ type: "split", split_with: "card" });
-      return;
-    }
-
-    if (value === "split-transfer") {
-      await fetchSalesByPayment({ type: "split", split_with: "transfer" });
-      return;
     }
   };
 
@@ -335,57 +295,12 @@ export default function SalesManagement() {
         );
       }
 
-      if (paymentFilter === "all") {
-        await fetchSales();
-      } else {
-        await handlePaymentFilterChange(paymentFilter);
-      }
+      await fetchSales(salesQueryParams);
     } catch (err) {
       toast.error(err?.response?.data?.message || "Failed to refund sale");
     } finally {
       setRefundLoadingId(null);
     }
-  };
-
-  const isInRange = (sale, range) => {
-    const saleDate = getSaleDate(sale);
-    if (!saleDate) return false;
-
-    const m = moment(saleDate);
-
-    if (range === "today") return m.isSame(moment(), "day");
-    if (range === "week") return m.isSame(moment(), "week");
-    if (range === "month") return m.isSame(moment(), "month");
-    return true;
-  };
-
-  const isInCustomDateRange = (sale) => {
-    const saleDate = getSaleDate(sale);
-    if (!saleDate) return false;
-
-    const m = moment(saleDate);
-    const hasFrom = !!dateFrom;
-    const hasTo = !!dateTo;
-
-    if (!hasFrom && !hasTo) return true;
-
-    if (hasFrom && hasTo) {
-      const from = moment(dateFrom).startOf("day");
-      const to = moment(dateTo).endOf("day");
-      return m.isBetween(from, to, undefined, "[]");
-    }
-
-    if (hasFrom) {
-      const from = moment(dateFrom).startOf("day");
-      return m.isSameOrAfter(from);
-    }
-
-    if (hasTo) {
-      const to = moment(dateTo).endOf("day");
-      return m.isSameOrBefore(to);
-    }
-
-    return true;
   };
 
   const clearDateFilters = () => {
@@ -394,14 +309,13 @@ export default function SalesManagement() {
     setRangeFilter("all");
   };
 
-  const clearAllFilters = async () => {
+  const clearAllFilters = () => {
     setSearch("");
     setStatusFilter("all");
     setRangeFilter("all");
     setDateFrom("");
     setDateTo("");
     setPaymentFilter("all");
-    await fetchSales();
   };
 
   const toggleSection = (sectionKey) => {
@@ -411,39 +325,11 @@ export default function SalesManagement() {
     }));
   };
 
-  const filteredSales = useMemo(() => {
-    return sales.filter((sale) => {
-      const searchValue = search.trim().toLowerCase();
-
-      const matchesSearch =
-        !searchValue ||
-        String(sale.id || "").toLowerCase().includes(searchValue) ||
-        String(sale.cashier_name || "").toLowerCase().includes(searchValue) ||
-        String(sale.payment_method || "").toLowerCase().includes(searchValue) ||
-        String(sale.customer_name || "").toLowerCase().includes(searchValue) ||
-        getReadablePaymentMethod(sale).toLowerCase().includes(searchValue);
-
-      const matchesStatus =
-        statusFilter === "all"
-          ? true
-          : String(sale.status || "").toLowerCase() === statusFilter.toLowerCase();
-
-      const matchesRange = isInRange(sale, rangeFilter);
-      const matchesCustomDate = isInCustomDateRange(sale);
-
-      return matchesSearch && matchesStatus && matchesRange && matchesCustomDate;
-    });
-  }, [sales, search, statusFilter, rangeFilter, dateFrom, dateTo]);
-
-  const filteredSalesTotal = useMemo(() => {
-    return filteredSales
-      .filter((sale) => !isRefundedSale(sale))
-      .reduce((sum, sale) => sum + Number(sale.total_amount || sale.total || 0), 0);
-  }, [filteredSales]);
-
-  const summaryParams = useMemo(() => {
+  const salesQueryParams = useMemo(() => {
     const params = {};
 
+    params.page = currentPage;
+    params.per_page = SALES_PER_PAGE;
     if (search.trim()) params.search = search.trim();
     if (statusFilter !== "all") params.status = statusFilter;
     if (rangeFilter !== "all") params.range = rangeFilter;
@@ -452,25 +338,54 @@ export default function SalesManagement() {
     if (paymentFilter !== "all") params.payment = paymentFilter;
 
     return params;
-  }, [search, statusFilter, rangeFilter, dateFrom, dateTo, paymentFilter]);
+  }, [currentPage, search, statusFilter, rangeFilter, dateFrom, dateTo, paymentFilter]);
 
-  const totalSalesPages = useMemo(() => {
-    return Math.max(1, Math.ceil(filteredSales.length / SALES_PER_PAGE));
-  }, [filteredSales.length]);
-
-  const paginatedSales = useMemo(() => {
-    const startIndex = (currentPage - 1) * SALES_PER_PAGE;
-    return filteredSales.slice(startIndex, startIndex + SALES_PER_PAGE);
-  }, [filteredSales, currentPage]);
+  const summaryParams = useMemo(() => {
+    const params = { ...salesQueryParams };
+    delete params.page;
+    delete params.per_page;
+    return params;
+  }, [salesQueryParams]);
 
   const todayStats = salesSummary.today || EMPTY_SALES_SUMMARY.today;
   const weekStats = salesSummary.week || EMPTY_SALES_SUMMARY.week;
   const monthStats = salesSummary.month || EMPTY_SALES_SUMMARY.month;
   const overallStats = salesSummary.overall || EMPTY_SALES_SUMMARY.overall;
   const filteredStats = salesSummary.filtered || EMPTY_SALES_SUMMARY.filtered;
-  const chartData = useMemo(() => buildSevenDayTrend(filteredSales), [filteredSales]);
+  const totalSalesPages = useMemo(() => {
+    const serverPages = Number(salesPagination.totalPages || 1);
+    const summaryPages = Math.max(
+      1,
+      Math.ceil(Number(filteredStats.totalSales || 0) / SALES_PER_PAGE)
+    );
+
+    return salesPagination.fromServer ? serverPages : summaryPages;
+  }, [filteredStats.totalSales, salesPagination.fromServer, salesPagination.totalPages]);
+
+  const chartData = useMemo(() => {
+    return buildSevenDayTrend(sales);
+  }, [sales]);
 
   const chartMax = Math.max(...chartData.map((item) => item.total), 1);
+  const paginatedSales = useMemo(() => {
+    if (salesPagination.fromServer) {
+      return sales;
+    }
+
+    const startIndex = (currentPage - 1) * SALES_PER_PAGE;
+    return sales.slice(startIndex, startIndex + SALES_PER_PAGE);
+  }, [currentPage, sales, salesPagination.fromServer]);
+  const visiblePageNumbers = useMemo(() => {
+    const windowSize = 5;
+    const start = Math.max(1, currentPage - Math.floor(windowSize / 2));
+    const end = Math.min(totalSalesPages, start + windowSize - 1);
+    const normalizedStart = Math.max(1, end - windowSize + 1);
+
+    return Array.from(
+      { length: end - normalizedStart + 1 },
+      (_, index) => normalizedStart + index
+    );
+  }, [currentPage, totalSalesPages]);
 
   const closeDetailsModal = () => {
     setShowDetailsModal(false);
@@ -544,8 +459,8 @@ export default function SalesManagement() {
         { Field: "Payment Filter", Value: getPaymentFilterLabel() },
         { Field: "Current Page", Value: currentPage },
         { Field: "Rows On Page", Value: exportRows.length },
-        { Field: "Filtered Records", Value: filteredSales.length },
-        { Field: "Filtered Revenue", Value: Number(filteredSalesTotal) },
+        { Field: "Filtered Records", Value: Number(filteredStats.totalSales || 0) },
+        { Field: "Filtered Revenue", Value: Number(filteredStats.revenue || 0) },
         { Field: "Page Revenue", Value: Number(exportTotal) }
       ];
 
@@ -653,8 +568,8 @@ export default function SalesManagement() {
               <p><strong>Payment Filter:</strong> ${getPaymentFilterLabel()}</p>
               <p><strong>Current Page:</strong> ${currentPage}</p>
               <p><strong>Rows On Page:</strong> ${exportRows.length}</p>
-              <p><strong>Filtered Records:</strong> ${filteredSales.length}</p>
-              <p><strong>Filtered Revenue:</strong> ${formatMoney(filteredSalesTotal)}</p>
+              <p><strong>Filtered Records:</strong> ${Number(filteredStats.totalSales || 0)}</p>
+              <p><strong>Filtered Revenue:</strong> ${formatMoney(filteredStats.revenue || 0)}</p>
               <p><strong>Page Revenue:</strong> ${formatMoney(exportTotal)}</p>
             </div>
 
@@ -755,8 +670,12 @@ export default function SalesManagement() {
   }, [selectedSale, detailsTotals]);
 
   useEffect(() => {
+    fetchSales(salesQueryParams);
+  }, [salesQueryParams]);
+
+  useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, rangeFilter, dateFrom, dateTo, paymentFilter, sales]);
+  }, [search, statusFilter, rangeFilter, dateFrom, dateTo, paymentFilter]);
 
   useEffect(() => {
     let active = true;
@@ -1284,7 +1203,7 @@ export default function SalesManagement() {
                 <button
                   className={styles.secondaryBtn}
                   onClick={downloadExcel}
-                  disabled={loading || filteredSales.length === 0}
+                  disabled={loading || paginatedSales.length === 0}
                 >
                   <FiDownload />
                   Excel
@@ -1293,7 +1212,7 @@ export default function SalesManagement() {
                 <button
                   className={styles.secondaryBtn}
                   onClick={downloadWordDoc}
-                  disabled={loading || filteredSales.length === 0}
+                  disabled={loading || paginatedSales.length === 0}
                 >
                   <FiDownload />
                   Doc
@@ -1310,7 +1229,7 @@ export default function SalesManagement() {
 
                 <button
                   className={styles.secondaryBtn}
-                  onClick={() => handlePaymentFilterChange(paymentFilter)}
+                  onClick={() => fetchSales(salesQueryParams)}
                   disabled={loading}
                 >
                   <FiRefreshCw />
@@ -1334,7 +1253,7 @@ export default function SalesManagement() {
               <select
                 className={styles.filterSelect}
                 value={paymentFilter}
-                onChange={(e) => handlePaymentFilterChange(e.target.value)}
+                onChange={(e) => setPaymentFilter(e.target.value)}
               >
                 <option value="all">All Payments</option>
                 <option value="cash">Cash</option>
@@ -1435,16 +1354,16 @@ export default function SalesManagement() {
           <div className={styles.sectionBody}>
             <div className={styles.resultsSummaryBar}>
               <span>
-                Showing {paginatedSales.length} of {filteredSales.length} sale(s)
+                Showing {paginatedSales.length} of {summaryLoading ? "..." : filteredStats.totalSales} sale(s)
               </span>
               <span>
-                Page {currentPage} of {totalSalesPages}
+                Page {currentPage} of {totalSalesPages} • {salesPagination.perPage} per page
               </span>
             </div>
 
             {loading ? (
               <div className={styles.loader}>Loading sales...</div>
-            ) : filteredSales.length === 0 ? (
+            ) : paginatedSales.length === 0 ? (
               <div className={styles.emptyState}>No sales found</div>
             ) : (
               <>
@@ -1532,8 +1451,7 @@ export default function SalesManagement() {
                   </button>
 
                   <div className={styles.paginationPages}>
-                    {Array.from({ length: totalSalesPages }, (_, index) => {
-                      const page = index + 1;
+                    {visiblePageNumbers.map((page) => {
                       return (
                         <button
                           key={page}

@@ -1,8 +1,8 @@
 import API from "./api";
 
 // get all sales
-export const getSales = async () => {
-  const { data } = await API.get("/sales");
+export const getSales = async (params = {}) => {
+  const { data } = await API.get("/sales", { params });
   return data;
 };
 
