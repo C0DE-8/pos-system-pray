@@ -31,6 +31,12 @@ const INVENTORY_SUBMENU_LABELS = [
   "Disabled Products"
 ];
 
+const WAREHOUSE_SUBMENU_LABELS = [
+  "Warehouse Actions",
+  "Warehouse Products",
+  "Warehouse History"
+];
+
 const ICONS = {
   Overview: <FiGrid />,
   Products: <FiBox />,
@@ -52,7 +58,10 @@ const ICONS = {
   "Inventory List": <FiBox />,
   "Low Stock Products": <FiBox />,
   "Stock History": <FiBox />,
-  "Disabled Products": <FiBox />
+  "Disabled Products": <FiBox />,
+  "Warehouse Actions": <FiArchive />,
+  "Warehouse Products": <FiArchive />,
+  "Warehouse History": <FiArchive />
 };
 
 export default function Sidebar({
@@ -66,17 +75,30 @@ export default function Sidebar({
   const inventoryChildren = menu.filter((item) =>
     INVENTORY_SUBMENU_LABELS.includes(item.label)
   );
+  const warehouseChildren = menu.filter((item) =>
+    WAREHOUSE_SUBMENU_LABELS.includes(item.label)
+  );
   const topLevelItems = menu.filter(
-    (item) => !INVENTORY_SUBMENU_LABELS.includes(item.label)
+    (item) =>
+      !INVENTORY_SUBMENU_LABELS.includes(item.label) &&
+      !WAREHOUSE_SUBMENU_LABELS.includes(item.label)
   );
   const isInventoryActive = INVENTORY_SUBMENU_LABELS.includes(activeMenu);
+  const isWarehouseActive = WAREHOUSE_SUBMENU_LABELS.includes(activeMenu);
   const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
+  const [warehouseOpen, setWarehouseOpen] = useState(isWarehouseActive);
 
   useEffect(() => {
     if (isInventoryActive) {
       setInventoryOpen(true);
     }
   }, [isInventoryActive]);
+
+  useEffect(() => {
+    if (isWarehouseActive) {
+      setWarehouseOpen(true);
+    }
+  }, [isWarehouseActive]);
 
   return (
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""}`}>
@@ -134,6 +156,58 @@ export default function Sidebar({
                 {!collapsed && inventoryOpen ? (
                   <div className={styles.submenu}>
                     {inventoryChildren.map((child) => (
+                      <button
+                        key={child.label}
+                        className={`${styles.submenuItem} ${
+                          activeMenu === child.label ? styles.activeSubmenuItem : ""
+                        }`}
+                        onClick={() => setActiveMenu(child.label)}
+                      >
+                        <span className={styles.submenuDot} />
+                        <span className={styles.submenuLabel}>{child.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            );
+          }
+
+          if (item.label === "Warehouse" && warehouseChildren.length) {
+            return (
+              <div key={item.label} className={styles.navGroup}>
+                <button
+                  className={`${styles.navItem} ${
+                    isWarehouseActive ? styles.activeNavItem : ""
+                  }`}
+                  onClick={() => {
+                    if (collapsed) {
+                      setActiveMenu(warehouseChildren[0].label);
+                      return;
+                    }
+
+                    setWarehouseOpen((prev) => !prev);
+                  }}
+                  title={collapsed ? item.label : ""}
+                >
+                  <span className={styles.icon}>{ICONS[item.label] || <FiGrid />}</span>
+                  {!collapsed ? (
+                    <>
+                      <span className={styles.label}>{item.label}</span>
+                      <span
+                        className={`${styles.groupChevron} ${
+                          warehouseOpen ? styles.groupChevronOpen : ""
+                        }`}
+                      >
+                        <FiChevronDown />
+                      </span>
+                    </>
+                  ) : null}
+                </button>
+
+                {!collapsed && warehouseOpen ? (
+                  <div className={styles.submenu}>
+                    {warehouseChildren.map((child) => (
                       <button
                         key={child.label}
                         className={`${styles.submenuItem} ${

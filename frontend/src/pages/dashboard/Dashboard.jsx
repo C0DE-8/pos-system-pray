@@ -68,11 +68,22 @@ const INVENTORY_SUBMENU_ITEMS = [
   { label: "Disabled Products", sectionKey: "disabledProducts" }
 ];
 
+const WAREHOUSE_SUBMENU_ITEMS = [
+  { label: "Warehouse Actions", sectionKey: "actions" },
+  { label: "Warehouse Products", sectionKey: "products" },
+  { label: "Warehouse History", sectionKey: "history" }
+];
+
 const INVENTORY_SUBMENU_LABELS = INVENTORY_SUBMENU_ITEMS.map((item) => item.label);
 const INVENTORY_SECTION_BY_LABEL = Object.fromEntries(
   INVENTORY_SUBMENU_ITEMS.map((item) => [item.label, item.sectionKey])
 );
 const DEFAULT_INVENTORY_MENU = INVENTORY_SUBMENU_ITEMS[0].label;
+const WAREHOUSE_SUBMENU_LABELS = WAREHOUSE_SUBMENU_ITEMS.map((item) => item.label);
+const WAREHOUSE_SECTION_BY_LABEL = Object.fromEntries(
+  WAREHOUSE_SUBMENU_ITEMS.map((item) => [item.label, item.sectionKey])
+);
+const DEFAULT_WAREHOUSE_MENU = WAREHOUSE_SUBMENU_ITEMS[0].label;
 
 const MENU_ITEMS = [
   { label: "Overview", permission: null, icon: <FiHome /> },
@@ -86,6 +97,11 @@ const MENU_ITEMS = [
   })),
   { label: "Unit Hierarchy", permission: "inventory", icon: <FiGitBranch /> },
   { label: "Warehouse", permission: "inventory", icon: <FiArchive /> },
+  ...WAREHOUSE_SUBMENU_ITEMS.map((item) => ({
+    label: item.label,
+    permission: "inventory",
+    icon: <FiArchive />
+  })),
   { label: "Sales", permission: "sales", icon: <FiTrendingUp /> },
   { label: "Reports", permission: "analytics", icon: <FiBarChart2 /> },
   { label: "Members", permission: "members", icon: <FiUsers /> },
@@ -140,6 +156,10 @@ const getAlertDismissKey = (key) => {
 const normalizeMenuLabel = (label) => {
   if (label === "Inventory") {
     return DEFAULT_INVENTORY_MENU;
+  }
+
+  if (label === "Warehouse") {
+    return DEFAULT_WAREHOUSE_MENU;
   }
 
   return label;
@@ -628,10 +648,13 @@ export default function Dashboard() {
       );
     }
 
-    if (activeMenu === "Warehouse" && hasPermission(currentUser, currentPermissions, "inventory")) {
+    if (
+      WAREHOUSE_SECTION_BY_LABEL[activeMenu] &&
+      hasPermission(currentUser, currentPermissions, "inventory")
+    ) {
       return (
         <section className={styles.fullSection}>
-          <WarehouseManagement />
+          <WarehouseManagement activeSection={WAREHOUSE_SECTION_BY_LABEL[activeMenu]} />
         </section>
       );
     }
@@ -919,7 +942,8 @@ export default function Dashboard() {
             type="button"
             className={`${styles.bottomNavItem} ${
               activeMenu === item.label ||
-              (item.label === "Inventory" && INVENTORY_SUBMENU_LABELS.includes(activeMenu))
+              (item.label === "Inventory" && INVENTORY_SUBMENU_LABELS.includes(activeMenu)) ||
+              (item.label === "Warehouse" && WAREHOUSE_SUBMENU_LABELS.includes(activeMenu))
                 ? styles.bottomNavItemActive
                 : ""
             }`}

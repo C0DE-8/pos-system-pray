@@ -3,7 +3,7 @@ import axios from "axios";
 
 // https://api.pos.adsoforion.com/ https://api.pray-pos.copupbid.com/api
 const API = axios.create({
-  baseURL: "http://localhost:5000/api"
+  baseURL: "https://api.pos.adsoforion.com/api"
 });
 
 API.interceptors.request.use(

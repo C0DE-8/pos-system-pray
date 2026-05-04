@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiRefreshCw,
   FiPackage,
   FiArrowDownCircle,
   FiArrowUpCircle,
   FiClock,
-  FiSearch
+  FiSearch,
+  FiChevronDown
 } from "react-icons/fi";
 import { getProducts } from "../../api/productsApi";
 import {
@@ -23,7 +24,7 @@ const initialForm = {
   reason: ""
 };
 
-export default function WarehouseManagement() {
+export default function WarehouseManagement({ activeSection = "actions" }) {
   const [products, setProducts] = useState([]);
   const [history, setHistory] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -34,7 +35,10 @@ export default function WarehouseManagement() {
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [feedback, setFeedback] = useState({ type: "", text: "" });
-  const [search, setSearch] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const [actionProductSearch, setActionProductSearch] = useState("");
+  const [actionProductOpen, setActionProductOpen] = useState(false);
+  const actionProductRef = useRef(null);
 
   const normalizeBaseProducts = (rows) => {
     return (Array.isArray(rows) ? rows : []).map((item) => ({
@@ -142,8 +146,19 @@ export default function WarehouseManagement() {
     loadHistory();
   }, []);
 
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (!actionProductRef.current?.contains(event.target)) {
+        setActionProductOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
   const filteredProducts = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = productSearch.trim().toLowerCase();
 
     if (!term) return products;
 
@@ -153,7 +168,20 @@ export default function WarehouseManagement() {
       const id = String(item.product_id || "");
       return name.includes(term) || category.includes(term) || id.includes(term);
     });
-  }, [products, search]);
+  }, [products, productSearch]);
+
+  const filteredActionProducts = useMemo(() => {
+    const term = actionProductSearch.trim().toLowerCase();
+
+    if (!term) return products;
+
+    return products.filter((item) => {
+      const name = String(item.name || "").toLowerCase();
+      const category = String(item.category_name || "").toLowerCase();
+      const id = String(item.product_id || "");
+      return name.includes(term) || category.includes(term) || id.includes(term);
+    });
+  }, [products, actionProductSearch]);
 
   const selectedProduct = useMemo(() => {
     return (
@@ -162,6 +190,11 @@ export default function WarehouseManagement() {
       ) || null
     );
   }, [products, selectedProductId]);
+
+  const getActionProductLabel = (item) => {
+    if (!item) return "";
+    return `${item.name} • WH ${item.warehouse_qty} • Shop ${item.shop_stock}`;
+  };
 
   const totals = useMemo(() => {
     return products.reduce(
@@ -278,6 +311,10 @@ export default function WarehouseManagement() {
     );
   };
 
+  const showActionsSection = activeSection === "actions";
+  const showProductsSection = activeSection === "products";
+  const showHistorySection = activeSection === "history";
+
   return (
     <div className={styles.wrapper}>
       <div className={styles.hero}>
@@ -344,8 +381,8 @@ export default function WarehouseManagement() {
         </div>
       ) : null}
 
-      <section className={styles.mainGrid}>
-        <div className={styles.leftColumn}>
+      {showActionsSection ? (
+        <section className={styles.singleSection}>
           <div className={styles.panel}>
             <div className={styles.panelHead}>
               <div>
@@ -406,18 +443,87 @@ export default function WarehouseManagement() {
 
               <div className={styles.field}>
                 <label className={styles.label}>Product</label>
-                <select
-                  className={styles.select}
-                  value={selectedProductId}
-                  onChange={(e) => setSelectedProductId(e.target.value)}
+                <div
+                  ref={actionProductRef}
+                  className={`${styles.productPicker} ${
+                    actionProductOpen ? styles.productPickerOpen : ""
+                  }`}
                 >
-                  <option value="">Select product</option>
-                  {products.map((item) => (
-                    <option key={item.product_id} value={item.product_id}>
-                      {item.name} (Warehouse: {item.warehouse_qty}, Shop: {item.shop_stock})
-                    </option>
-                  ))}
-                </select>
+                  <div className={styles.searchBox}>
+                    <FiSearch className={styles.searchIcon} />
+                    <input
+                      type="text"
+                      className={styles.searchInput}
+                      placeholder="Search and select product..."
+                      value={actionProductSearch}
+                      onFocus={() => setActionProductOpen(true)}
+                      onChange={(e) => {
+                        setActionProductSearch(e.target.value);
+                        setActionProductOpen(true);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className={styles.pickerToggle}
+                      onClick={() => setActionProductOpen((prev) => !prev)}
+                      aria-label="Toggle product list"
+                    >
+                      <FiChevronDown
+                        className={`${styles.pickerChevron} ${
+                          actionProductOpen ? styles.pickerChevronOpen : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {selectedProduct ? (
+                    <div className={styles.selectedProductPill}>
+                      <span className={styles.selectedProductName}>{selectedProduct.name}</span>
+                      <span className={styles.selectedProductMeta}>
+                        WH {selectedProduct.warehouse_qty} • Shop {selectedProduct.shop_stock}
+                      </span>
+                    </div>
+                  ) : null}
+
+                  {actionProductOpen ? (
+                    <div className={styles.pickerMenu}>
+                      {loading ? (
+                        <div className={styles.pickerEmpty}>Loading products...</div>
+                      ) : filteredActionProducts.length ? (
+                        filteredActionProducts.map((item) => (
+                          <button
+                            key={item.product_id}
+                            type="button"
+                            className={`${styles.pickerOption} ${
+                              String(selectedProductId) === String(item.product_id)
+                                ? styles.pickerOptionActive
+                                : ""
+                            }`}
+                            onClick={() => {
+                              setSelectedProductId(String(item.product_id));
+                              setActionProductSearch(getActionProductLabel(item));
+                              setActionProductOpen(false);
+                            }}
+                          >
+                            <span className={styles.pickerOptionTop}>
+                              <span className={styles.pickerOptionName}>{item.name}</span>
+                              <span className={styles.pickerOptionId}>ID: {item.product_id}</span>
+                            </span>
+                            <span className={styles.pickerOptionMeta}>
+                              {item.category_name || "—"} • WH {item.warehouse_qty} • Shop{" "}
+                              {item.shop_stock}
+                            </span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className={styles.pickerEmpty}>No products match that search.</div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+                <span className={styles.fieldNote}>
+                  Search by product name, category, or product ID.
+                </span>
               </div>
 
               {selectedProduct ? (
@@ -482,10 +588,14 @@ export default function WarehouseManagement() {
               </div>
             </form>
           </div>
-        </div>
+        </section>
+      ) : null}
 
-        <div className={styles.rightColumn}>
-          <div className={`${styles.panel} ${styles.fixedPanel} ${styles.productsPanel}`}>
+      {showProductsSection ? (
+        <section className={styles.singleSection}>
+          <div
+            className={`${styles.panel} ${styles.fixedPanel} ${styles.productsPanel}`}
+          >
             <div className={styles.panelHead}>
               <div>
                 <h2 className={styles.panelTitle}>Warehouse Products</h2>
@@ -502,8 +612,8 @@ export default function WarehouseManagement() {
                   type="text"
                   className={styles.searchInput}
                   placeholder="Search by name, category or product id..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
                 />
               </div>
             </div>
@@ -606,8 +716,14 @@ export default function WarehouseManagement() {
               )}
             </div>
           </div>
+        </section>
+      ) : null}
 
-          <div className={`${styles.panel} ${styles.fixedPanel} ${styles.historyPanel}`}>
+      {showHistorySection ? (
+        <section className={styles.singleSection}>
+          <div
+            className={`${styles.panel} ${styles.fixedPanel} ${styles.historyPanel}`}
+          >
             <div className={styles.panelHead}>
               <div>
                 <h2 className={styles.panelTitle}>Warehouse History</h2>
@@ -656,8 +772,8 @@ export default function WarehouseManagement() {
               )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }
