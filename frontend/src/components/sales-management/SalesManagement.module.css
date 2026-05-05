@@ -600,6 +600,72 @@
   font-weight: 600;
 }
 
+.resultsFallback {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 220px;
+  padding: 8px 0 4px;
+}
+
+.fallbackHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fallbackTable {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.fallbackRow {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(80px, 1fr));
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.fallbackRow:last-child {
+  border-bottom: none;
+}
+
+.fallbackCell,
+.fallbackLineShort,
+.fallbackLineMedium {
+  display: block;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e2e8f0 25%, #f8fafc 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.fallbackLineShort {
+  width: 180px;
+  max-width: 100%;
+}
+
+.fallbackLineMedium {
+  width: 240px;
+  max-width: 100%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 .emptyStateSmall,
 .emptyCell {
   min-height: 100px;
@@ -982,6 +1048,10 @@
   .receiptPreviewWrap {
     padding: 10px;
   }
+
+  .fallbackRow {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 700px) {
@@ -993,6 +1063,10 @@
 
   .toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .fallbackRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .paginationBar {

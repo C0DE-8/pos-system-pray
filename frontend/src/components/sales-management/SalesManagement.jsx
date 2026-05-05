@@ -83,6 +83,43 @@ const buildSevenDayTrend = (sales) => {
   return Array.from(dailyMap.values());
 };
 
+function SalesResultsFallback() {
+  return (
+    <div className={styles.resultsFallback} aria-hidden="true">
+      <div className={styles.fallbackHeader}>
+        <span className={styles.fallbackLineShort} />
+        <span className={styles.fallbackLineMedium} />
+      </div>
+
+      <div className={styles.fallbackTable}>
+        <div className={styles.fallbackRow}>
+          <span className={styles.fallbackCell} />
+          <span className={styles.fallbackCell} />
+          <span className={styles.fallbackCell} />
+          <span className={styles.fallbackCell} />
+          <span className={styles.fallbackCell} />
+          <span className={styles.fallbackCell} />
+          <span className={styles.fallbackCell} />
+          <span className={styles.fallbackCell} />
+        </div>
+
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className={styles.fallbackRow}>
+            <span className={styles.fallbackCell} />
+            <span className={styles.fallbackCell} />
+            <span className={styles.fallbackCell} />
+            <span className={styles.fallbackCell} />
+            <span className={styles.fallbackCell} />
+            <span className={styles.fallbackCell} />
+            <span className={styles.fallbackCell} />
+            <span className={styles.fallbackCell} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SalesManagement() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -375,6 +412,20 @@ export default function SalesManagement() {
     const startIndex = (currentPage - 1) * SALES_PER_PAGE;
     return sales.slice(startIndex, startIndex + SALES_PER_PAGE);
   }, [currentPage, sales, salesPagination.fromServer]);
+  const visibleSalesRange = useMemo(() => {
+    const totalFilteredSales = Number(filteredStats.totalSales || 0);
+
+    if (paginatedSales.length === 0) {
+      return { start: 0, end: 0 };
+    }
+
+    const start = (currentPage - 1) * SALES_PER_PAGE + 1;
+    const end = totalFilteredSales > 0
+      ? Math.min(start + paginatedSales.length - 1, totalFilteredSales)
+      : start + paginatedSales.length - 1;
+
+    return { start, end };
+  }, [currentPage, filteredStats.totalSales, paginatedSales.length]);
   const visiblePageNumbers = useMemo(() => {
     const windowSize = 5;
     const start = Math.max(1, currentPage - Math.floor(windowSize / 2));
@@ -1354,7 +1405,8 @@ export default function SalesManagement() {
           <div className={styles.sectionBody}>
             <div className={styles.resultsSummaryBar}>
               <span>
-                Showing {paginatedSales.length} of {summaryLoading ? "..." : filteredStats.totalSales} sale(s)
+                Showing {visibleSalesRange.start}-{visibleSalesRange.end} of{" "}
+                {summaryLoading ? "..." : filteredStats.totalSales} sale(s)
               </span>
               <span>
                 Page {currentPage} of {totalSalesPages} • {salesPagination.perPage} per page
@@ -1362,7 +1414,7 @@ export default function SalesManagement() {
             </div>
 
             {loading ? (
-              <div className={styles.loader}>Loading sales...</div>
+              <SalesResultsFallback />
             ) : paginatedSales.length === 0 ? (
               <div className={styles.emptyState}>No sales found</div>
             ) : (
