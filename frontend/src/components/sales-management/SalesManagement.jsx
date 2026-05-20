@@ -30,7 +30,7 @@ import { toast } from "../CustomToaster/toast";
 import styles from "./SalesManagement.module.css";
 
 const DEFAULT_SETTINGS = {
-  business_name: "Arena Pro Game Center",
+  business_name: "Pray Restaurant & Lounge",
   business_address: "123 Game Street, Lagos",
   business_phone: "+234 800 000 0000",
   tax_rate: 0,

@@ -63,12 +63,12 @@ const PAYMENT_METHODS = [
 ];
 
 const DEFAULT_SETTINGS = {
-  business_name: "Arena Pro Game Center",
+  business_name: "Pray Restaurant & Lounge",
   business_address: "123 Game Street, Lagos",
   business_phone: "+234 800 000 0000",
   tax_rate: 0,
   currency: "NGN",
-  receipt_footer: "Thank you for playing at Arena Pro!"
+  receipt_footer: "Thank you for visiting Pray Restaurant & Lounge!"
 };
 
 const HALF_PRICE_DISCOUNT_PCT = 50;
@@ -1687,7 +1687,7 @@ export default function POSManagement() {
     if (!receipt) return;
 
     const text = buildReceiptShareText(receipt);
-    const title = `${settings?.business_name || "Arena Pro"} Receipt`;
+    const title = `${settings?.business_name || "Pray Restaurant & Lounge"} Receipt`;
 
     try {
       if (navigator.share) {

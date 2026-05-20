@@ -10,7 +10,7 @@ import {
 import styles from "./MobileSidebarHead.module.css";
 
 export default function MobileSidebarHead({
-  title = "Arena Pro",
+  title = "Pray Restaurant & Lounge",
   subtitle = "Dashboard Menu",
   user = null,
   role = "viewer",

@@ -411,7 +411,7 @@ export default function Dashboard() {
         {
           title: "Total Users",
           value: data.users ?? 0,
-          note: "People using Arena Pro"
+          note: "People using Pray Restaurant & Lounge"
         },
         {
           title: "Products",
@@ -698,7 +698,7 @@ export default function Dashboard() {
         }`}
       >
         <MobileSidebarHead
-          title="Arena Pro"
+          title="Pray Restaurant & Lounge"
           subtitle="Dashboard Menu"
           user={currentUser}
           role={role}
@@ -732,7 +732,7 @@ export default function Dashboard() {
             </button>
 
             <div className={styles.mobileHeadingBlock}>
-              <h2 className={styles.mobileTitle}>Arena Pro</h2>
+              <h2 className={styles.mobileTitle}>Pray Restaurant & Lounge</h2>
               <p className={styles.mobileSubtitle}>{activeMenu}</p>
             </div>
           </div>

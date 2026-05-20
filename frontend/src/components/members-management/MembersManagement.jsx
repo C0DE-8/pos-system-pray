@@ -629,7 +629,7 @@ export default function MembersManagement() {
             <div>
               <h2 className={styles.title}>Add Member</h2>
               <p className={styles.subtitle}>
-                Register a new member for Arena Pro
+                Register a new member for Pray Restaurant & Lounge
               </p>
             </div>
           </div>

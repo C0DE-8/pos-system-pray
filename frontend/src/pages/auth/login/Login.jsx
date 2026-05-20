@@ -123,7 +123,7 @@ export default function Login() {
         <div className={styles.loginCard}>
           <div className={styles.brand}>
             <div className={styles.logoCircle}>🎮</div>
-            <h1>Arena Pro</h1>
+            <h1>Pray Restaurant & Lounge</h1>
             <p>Checking session...</p>
           </div>
         </div>
@@ -140,7 +140,7 @@ export default function Login() {
         <div className={styles.loginCard}>
           <div className={styles.brand}>
             <div className={styles.logoCircle}>🎮</div>
-            <h1>Arena Pro</h1>
+            <h1>Pray Restaurant & Lounge</h1>
             <p>Login with your username/email, password and branch</p>
           </div>
 
