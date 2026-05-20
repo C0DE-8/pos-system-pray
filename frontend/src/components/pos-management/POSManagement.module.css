@@ -515,6 +515,132 @@
   margin-top: 5px;
 }
 
+/* Glass POS surface layer */
+.posShell,
+.posPage {
+  --pos-glass-bg: rgba(255, 255, 255, 0.72);
+  --pos-glass-strong: rgba(255, 255, 255, 0.86);
+  --pos-glass-soft: rgba(248, 250, 252, 0.68);
+  --pos-glass-border: rgba(148, 163, 184, 0.28);
+  --pos-glow: rgba(37, 99, 235, 0.13);
+}
+
+.productsPanel,
+.cartPanel,
+.sectionCard,
+.salesDetailsDayCard,
+.salesDetailsMetric,
+.salesDetailsBlock {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.66)),
+    radial-gradient(circle at 16% 0%, rgba(34, 197, 94, 0.12), transparent 34%),
+    radial-gradient(circle at 88% 8%, rgba(59, 130, 246, 0.14), transparent 34%);
+  border-color: var(--pos-glass-border);
+  box-shadow:
+    0 18px 48px rgba(15, 23, 42, 0.09),
+    0 0 30px rgba(59, 130, 246, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.sectionHeaderBtn,
+.cartHeader,
+.mobileTopCard {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(248, 250, 252, 0.58));
+  border-color: rgba(226, 232, 240, 0.72);
+}
+
+.sectionHeaderIcon,
+.mobileTopCardIcon {
+  background: rgba(219, 234, 254, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.searchBox,
+.shiftInput,
+.formGroup input,
+.productCard,
+.pendingCard,
+.cartItem,
+.totalsBox,
+.memberDiscountCard,
+.stateBox,
+.emptyCart,
+.pendingEmpty,
+.unitOptionCard,
+.salesDetailsSaleRow {
+  background: var(--pos-glass-bg);
+  border-color: rgba(148, 163, 184, 0.28);
+  box-shadow:
+    0 10px 28px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.productCard:hover,
+.pendingCard:hover,
+.cartItem:hover,
+.unitOptionCard:hover {
+  border-color: rgba(37, 99, 235, 0.34);
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.12),
+    0 0 28px var(--pos-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.productType,
+.timedBadge,
+.countBadge {
+  background: rgba(219, 234, 254, 0.8);
+  border: 1px solid rgba(147, 197, 253, 0.44);
+}
+
+.categoryBtn,
+.paginationBtn,
+.paginationNumber,
+.paymentBtn,
+.pendingRefreshBtn,
+.pendingRefreshIconBtn,
+.qtyControls button,
+.secondaryBtn,
+.receiptHeader button {
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.categoryBtn:hover,
+.paginationBtn:hover:not(:disabled),
+.paginationNumber:hover,
+.paymentBtn:hover,
+.pendingRefreshBtn:hover,
+.pendingRefreshIconBtn:hover,
+.secondaryBtn:hover {
+  background: rgba(239, 246, 255, 0.9);
+  border-color: rgba(59, 130, 246, 0.34);
+  box-shadow:
+    0 10px 24px rgba(37, 99, 235, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.categoryBtnActive,
+.paginationNumberActive,
+.paymentBtnActive {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.96), rgba(29, 78, 216, 0.92));
+  border-color: rgba(37, 99, 235, 0.8);
+  color: #ffffff;
+}
+
+.pendingNote,
+.cartItemDeal {
+  background: rgba(248, 250, 252, 0.72);
+  border: 1px solid rgba(226, 232, 240, 0.72);
+}
+
 .salesDetailsEmpty {
   padding: 10px 0 2px;
 }
@@ -2307,6 +2433,209 @@
 
   .salesDetailsSaleRow {
     padding: 13px 14px;
+  }
+}
+
+.posPageOrderModal {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.openOrderBtn,
+.minimizeOrderBtn,
+.orderMiniDock {
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: 0.2s ease;
+}
+
+.openOrderBtn {
+  min-height: 46px;
+  border-radius: 14px;
+  padding: 0 14px;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  box-shadow:
+    0 10px 28px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.openOrderBtn:hover,
+.orderMiniDock:hover,
+.minimizeOrderBtn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.36);
+  box-shadow:
+    0 16px 36px rgba(15, 23, 42, 0.13),
+    0 0 28px rgba(37, 99, 235, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.openOrderBtn strong {
+  color: #16a34a;
+}
+
+.orderMiniDock {
+  position: relative;
+  z-index: 39;
+}
+
+.orderMiniDockBtn {
+  position: fixed;
+  width: 60px;
+  height: 60px;
+  border: none;
+  border-radius: 999px;
+  padding: 0;
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: #f8fafc;
+  box-shadow: 0 18px 32px rgba(22, 163, 74, 0.26);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  z-index: 39;
+  overflow: visible;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.orderMiniDockBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 40px rgba(22, 163, 74, 0.32);
+}
+
+.orderMiniDockIcon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.orderMiniDockBadge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.orderModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  border: none;
+  cursor: pointer;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(34, 197, 94, 0.16), transparent 32%),
+    radial-gradient(circle at 80% 18%, rgba(59, 130, 246, 0.18), transparent 34%),
+    rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.orderModalPanel {
+  display: none;
+  position: fixed;
+  z-index: 80;
+  top: 50%;
+  left: 50%;
+  width: min(920px, calc(100vw - 32px));
+  max-height: min(92vh, 920px);
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  border-radius: 24px;
+}
+
+.orderModalPanelOpen {
+  display: block;
+  animation: orderModalIn 180ms ease;
+}
+
+.orderModalPanel .cartItems {
+  max-height: min(34vh, 360px);
+}
+
+.orderModalPanel .cartHeader {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.orderModalPanel .summary {
+  max-height: 38vh;
+  overflow-y: auto;
+}
+
+.minimizeOrderBtn {
+  min-height: 42px;
+  border-radius: 12px;
+  padding: 0 12px;
+  color: #1d4ed8;
+  background: rgba(219, 234, 254, 0.78);
+  border: 1px solid rgba(147, 197, 253, 0.42);
+  font-weight: 800;
+}
+
+@keyframes orderModalIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 12px)) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@media (max-width: 768px) {
+  .openOrderBtn {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .orderModalPanel {
+    inset: 10px;
+    top: 10px;
+    left: 10px;
+    width: auto;
+    max-height: none;
+    transform: none;
+    border-radius: 20px;
+    overflow-y: auto;
+  }
+
+  .orderModalPanelOpen {
+    animation: none;
+  }
+
+  .orderModalPanel .cartItems {
+    max-height: none;
+  }
+
+  .orderModalPanel .summary {
+    max-height: none;
   }
 }
 

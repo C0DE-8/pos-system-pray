@@ -133,6 +133,31 @@ const clampSalesDockPosition = (position, dockWidth = 280, dockHeight = 58) => {
   };
 };
 
+const getInitialOrderDockPosition = () => {
+  if (typeof window === "undefined") {
+    return { top: 200, right: 18 };
+  }
+
+  return {
+    top: window.innerWidth <= 768 ? 200 : 200,
+    right: window.innerWidth <= 768 ? 14 : 18
+  };
+};
+
+const clampOrderDockPosition = (position, dockWidth = 60, dockHeight = 60) => {
+  if (typeof window === "undefined") return position;
+
+  const minTop = 12;
+  const minRight = 12;
+  const maxTop = Math.max(minTop, window.innerHeight - dockHeight - 12);
+  const maxRight = Math.max(minRight, window.innerWidth - dockWidth - 12);
+
+  return {
+    top: Math.min(Math.max(position.top, minTop), maxTop),
+    right: Math.min(Math.max(position.right, minRight), maxRight)
+  };
+};
+
 export default function POSManagement() {
   const [products, setProducts] = useState([]);
   const [members, setMembers] = useState([]);
@@ -172,7 +197,27 @@ export default function POSManagement() {
     moved: false
   });
 
-  const [cart, setCart] = useState([]);
+  const [orderDockPosition, setOrderDockPosition] = useState(
+    getInitialOrderDockPosition
+  );
+  const orderDockRef = useRef(null);
+  const orderDragStateRef = useRef({
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    startTop: 0,
+    startRight: 0,
+    moved: false
+  });
+
+  const [cart, setCart] = useState(() => {
+    try {
+      const raw = localStorage.getItem("pos_cart");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
   const [unitOptionsCache, setUnitOptionsCache] = useState({});
   const [unitPickerProduct, setUnitPickerProduct] = useState(null);
   const [unitPickerOptions, setUnitPickerOptions] = useState([]);
@@ -205,6 +250,7 @@ export default function POSManagement() {
   const [pendingNote, setPendingNote] = useState("");
 
   const [desktopPendingOpen, setDesktopPendingOpen] = useState(true);
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [mobileCartOpen, setMobileCartOpen] = useState(true);
   const [mobileProductsOpen, setMobileProductsOpen] = useState(true);
   const [mobilePendingOpen, setMobilePendingOpen] = useState(false);
@@ -318,6 +364,10 @@ export default function POSManagement() {
     localStorage.setItem("checkout_customer_order_ids", JSON.stringify(checkoutCustomerIds));
   }, [checkoutCustomerIds]);
 
+  useEffect(() => {
+    localStorage.setItem("pos_cart", JSON.stringify(cart));
+  }, [cart]);
+
   const loadProductsData = async ({ silent = false } = {}) => {
     try {
       if (!silent) {
@@ -396,18 +446,13 @@ export default function POSManagement() {
   };
 
   const openCurrentOrderOnMobile = () => {
-    if (typeof window === "undefined" || window.innerWidth > 860) return;
-
+    setOrderModalOpen(true);
     setMobileCartOpen(true);
     setMobileSummaryOpen(true);
-    setMobileProductsOpen(false);
 
-    window.setTimeout(() => {
-      cartPanelRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-      });
-    }, 120);
+    if (typeof window !== "undefined" && window.innerWidth <= 860) {
+      setMobileProductsOpen(false);
+    }
   };
 
   const loadPendingCarts = async () => {
@@ -565,6 +610,62 @@ export default function POSManagement() {
 
     setSalesSummaryOpen((prev) => !prev);
     setSalesSummaryPeek(false);
+  };
+
+  const handleOrderDockPointerDown = (event) => {
+    if (event.button !== undefined && event.button !== 0) return;
+
+    const rect = orderDockRef.current?.getBoundingClientRect();
+    orderDragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startTop: orderDockPosition.top,
+      startRight: orderDockPosition.right,
+      moved: false,
+      dockWidth: rect?.width || 60,
+      dockHeight: rect?.height || 60
+    };
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleOrderDockPointerMove = (event) => {
+    const dragState = orderDragStateRef.current;
+    if (dragState.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - dragState.startX;
+    const deltaY = event.clientY - dragState.startY;
+    const nextPosition = clampOrderDockPosition(
+      {
+        top: dragState.startTop + deltaY,
+        right: dragState.startRight - deltaX
+      },
+      dragState.dockWidth,
+      dragState.dockHeight
+    );
+
+    if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+      dragState.moved = true;
+    }
+
+    setOrderDockPosition(nextPosition);
+  };
+
+  const handleOrderDockPointerUp = (event) => {
+    const dragState = orderDragStateRef.current;
+    if (dragState.pointerId !== event.pointerId) return;
+
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+    orderDragStateRef.current = {
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      startTop: 0,
+      startRight: 0,
+      moved: false
+    };
   };
 
   const categories = useMemo(() => {
@@ -776,7 +877,6 @@ export default function POSManagement() {
     });
 
     setError("");
-    openCurrentOrderOnMobile();
   };
 
   const handleProductSelection = async (product) => {
@@ -1099,6 +1199,7 @@ export default function POSManagement() {
     setCheckoutCustomerIds((prev) => Array.from(new Set([...prev, activeCustomerOrder.order.id])));
     setCustomerOrdersOpen(false);
     setActiveCustomerOrder(null);
+    setMobileSummaryOpen(true);
   };
 
   const handleUpdateCustomerStatus = async (status) => {
@@ -1182,6 +1283,7 @@ export default function POSManagement() {
       await loadPendingCarts();
       setDesktopPendingOpen(true);
       setMobilePendingOpen(true);
+      setOrderModalOpen(false);
     } catch (err) {
       setError(err?.response?.data?.message || "Failed to save pending cart");
     } finally {
@@ -1272,6 +1374,7 @@ export default function POSManagement() {
       setMobileCartOpen(true);
       setMobileSummaryOpen(true);
       setMobilePendingOpen(false);
+      setOrderModalOpen(true);
     } catch (err) {
       setError(err?.response?.data?.message || "Failed to open pending cart");
     }
@@ -1458,6 +1561,7 @@ export default function POSManagement() {
       );
 
       resetCartState();
+      setOrderModalOpen(false);
       await Promise.all([
         loadProductsData({ silent: true }),
         loadPendingCarts(),
@@ -1872,6 +1976,32 @@ export default function POSManagement() {
         </aside>
       </div>
 
+      <div className={styles.orderMiniDock}>
+        <button
+          type="button"
+          ref={orderDockRef}
+          className={styles.orderMiniDockBtn}
+          style={{
+            top: `${orderDockPosition.top}px`,
+            right: `${orderDockPosition.right}px`
+          }}
+          onPointerDown={handleOrderDockPointerDown}
+          onPointerMove={handleOrderDockPointerMove}
+          onPointerUp={handleOrderDockPointerUp}
+          title={`Current order: ${computedCart.length} item(s)`}
+          aria-label={`Current order: ${computedCart.length} item(s)`}
+        >
+          <span className={styles.orderMiniDockIcon}>
+            <FiShoppingCart />
+          </span>
+          {computedCart.length > 0 && (
+            <span className={styles.orderMiniDockBadge}>
+              {computedCart.length}
+            </span>
+          )}
+        </button>
+      </div>
+
       {salesSummaryDetailsOpen ? (
         <section
           className={styles.salesDetailsModal}
@@ -2093,7 +2223,7 @@ export default function POSManagement() {
         <button
           type="button"
           className={styles.mobileTopCard}
-          onClick={() => setMobileCartOpen((prev) => !prev)}
+          onClick={() => setOrderModalOpen(true)}
         >
           <div className={styles.mobileTopCardIcon}>
             <FiShoppingCart />
@@ -2105,7 +2235,7 @@ export default function POSManagement() {
             </span>
           </div>
           <div className={styles.mobileTopCardArrow}>
-            {mobileCartOpen ? <FiChevronUp /> : <FiChevronDown />}
+            <FiExternalLink />
           </div>
         </button>
 
@@ -2325,7 +2455,7 @@ export default function POSManagement() {
         </div>
       ) : null}
 
-      <div className={styles.posPage}>
+      <div className={`${styles.posPage} ${styles.posPageOrderModal}`}>
         <section className={styles.productsPanel}>
           <button
             type="button"
@@ -2352,6 +2482,15 @@ export default function POSManagement() {
                     Browse products and complete sales
                   </p>
                 </div>
+                <button
+                  type="button"
+                  className={styles.openOrderBtn}
+                  onClick={() => setOrderModalOpen(true)}
+                >
+                  <FiShoppingCart />
+                  <span>{computedCart.length} item(s)</span>
+                  <strong>{formatMoney(total)}</strong>
+                </button>
               </div>
 
               <div className={styles.toolbar}>
@@ -2506,11 +2645,26 @@ export default function POSManagement() {
           </div>
         </section>
 
-        <aside ref={cartPanelRef} className={styles.cartPanel}>
+        {orderModalOpen ? (
+          <button
+            type="button"
+            className={styles.orderModalBackdrop}
+            onClick={() => setOrderModalOpen(false)}
+            aria-label="Minimize current order"
+          />
+        ) : null}
+
+        <aside
+          ref={cartPanelRef}
+          className={`${styles.cartPanel} ${styles.orderModalPanel} ${
+            orderModalOpen ? styles.orderModalPanelOpen : ""
+          }`}
+          aria-hidden={!orderModalOpen}
+        >
           <button
             type="button"
             className={styles.mobileCollapseBtn}
-            onClick={() => setMobileCartOpen((prev) => !prev)}
+            onClick={() => setOrderModalOpen(false)}
           >
             <div className={styles.mobileCollapseLeft}>
               <FiShoppingCart />
@@ -2518,7 +2672,7 @@ export default function POSManagement() {
                 Cart ({computedCart.length}) • {formatMoney(total)}
               </span>
             </div>
-            {mobileCartOpen ? <FiChevronUp /> : <FiChevronDown />}
+            <FiChevronDown />
           </button>
 
           <div
@@ -2547,6 +2701,14 @@ export default function POSManagement() {
                 >
                   <FiTrash2 />
                   Clear
+                </button>
+                <button
+                  type="button"
+                  className={styles.minimizeOrderBtn}
+                  onClick={() => setOrderModalOpen(false)}
+                >
+                  <FiChevronDown />
+                  Minimize
                 </button>
               </div>
             </div>
@@ -3012,6 +3174,20 @@ export default function POSManagement() {
           </div>
         </aside>
       </div>
+
+      {!orderModalOpen ? (
+        <button
+          type="button"
+          className={styles.orderMiniDock}
+          onClick={() => setOrderModalOpen(true)}
+        >
+          <FiShoppingCart />
+          <span>
+            Current Order • {computedCart.length} item(s)
+          </span>
+          <strong>{formatMoney(total)}</strong>
+        </button>
+      ) : null}
 
       {unitPickerProduct ? (
         <div className={styles.unitPickerOverlay}>

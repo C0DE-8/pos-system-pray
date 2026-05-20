@@ -975,6 +975,117 @@
   margin-top: 18px;
 }
 
+/* Glass POS surface layer */
+.posShell,
+.posPage {
+  --pos-glass-bg: rgba(255, 255, 255, 0.72);
+  --pos-glass-border: rgba(148, 163, 184, 0.28);
+  --pos-glow: rgba(37, 99, 235, 0.13);
+}
+
+.productsPanel,
+.cartPanel,
+.sectionCard {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.66)),
+    radial-gradient(circle at 16% 0%, rgba(34, 197, 94, 0.12), transparent 34%),
+    radial-gradient(circle at 88% 8%, rgba(59, 130, 246, 0.14), transparent 34%);
+  border-color: var(--pos-glass-border);
+  box-shadow:
+    0 18px 48px rgba(15, 23, 42, 0.09),
+    0 0 30px rgba(59, 130, 246, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.sectionHeaderBtn,
+.cartHeader,
+.mobileTopCard {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(248, 250, 252, 0.58));
+  border-color: rgba(226, 232, 240, 0.72);
+}
+
+.sectionHeaderIcon,
+.mobileTopCardIcon {
+  background: rgba(219, 234, 254, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.searchBox,
+.shiftInput,
+.formGroup input,
+.productCard,
+.pendingCard,
+.cartItem,
+.totalsBox,
+.stateBox,
+.emptyCart,
+.pendingEmpty {
+  background: var(--pos-glass-bg);
+  border-color: rgba(148, 163, 184, 0.28);
+  box-shadow:
+    0 10px 28px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.productCard:hover,
+.pendingCard:hover,
+.cartItem:hover {
+  border-color: rgba(37, 99, 235, 0.34);
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.12),
+    0 0 28px var(--pos-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.productType,
+.countBadge,
+.timedBadge {
+  background: rgba(219, 234, 254, 0.8);
+  border: 1px solid rgba(147, 197, 253, 0.44);
+}
+
+.categoryBtn,
+.paymentBtn,
+.pendingRefreshBtn,
+.pendingRefreshIconBtn,
+.qtyControls button,
+.secondaryBtn,
+.receiptHeader button {
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.categoryBtn:hover,
+.paymentBtn:hover,
+.pendingRefreshBtn:hover,
+.pendingRefreshIconBtn:hover,
+.secondaryBtn:hover {
+  background: rgba(239, 246, 255, 0.9);
+  border-color: rgba(59, 130, 246, 0.34);
+  box-shadow:
+    0 10px 24px rgba(37, 99, 235, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.categoryBtnActive,
+.paymentBtnActive {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.96), rgba(29, 78, 216, 0.92));
+  border-color: rgba(37, 99, 235, 0.8);
+  color: #ffffff;
+}
+
+.pendingNote {
+  background: rgba(248, 250, 252, 0.72);
+  border: 1px solid rgba(226, 232, 240, 0.72);
+}
+
 .primaryBtn,
 .secondaryBtn {
   min-height: 44px;
