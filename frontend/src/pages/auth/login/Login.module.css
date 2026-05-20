@@ -309,6 +309,43 @@
   font-weight: 600;
 }
 
+.rememberOption {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.rememberOption input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.rememberOption span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rememberOption strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.rememberOption small {
+  color: rgba(226, 232, 240, 0.68);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .loginBtn {
   height: 50px;
   border: none;

@@ -514,6 +514,7 @@ export default function InventoryManagement({ activeSection = null }) {
   const [restockForm, setRestockForm] = useState(initialRestockForm);
   const [adjustForm, setAdjustForm] = useState(initialAdjustForm);
   const [stockToolSearch, setStockToolSearch] = useState("");
+  const [stockHistorySearch, setStockHistorySearch] = useState("");
 
   const [editingId, setEditingId] = useState(null);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
@@ -1351,6 +1352,27 @@ export default function InventoryManagement({ activeSection = null }) {
         return getSearchableProductText(product).includes(keyword);
       });
   }, [products, stockToolSearch]);
+
+  const filteredStockHistory = useMemo(() => {
+    const keyword = stockHistorySearch.toLowerCase().trim();
+    if (!keyword) return stockHistory;
+
+    return stockHistory.filter((item) => {
+      const fields = [
+        item.product_name,
+        item.reason,
+        item.updated_by,
+        item.before_qty,
+        item.after_qty,
+        item.change_qty,
+        formatStockHistoryDateTime(item.created_at)
+      ];
+
+      return fields.some((field) =>
+        String(field || "").toLowerCase().includes(keyword)
+      );
+    });
+  }, [stockHistory, stockHistorySearch]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / ITEMS_PER_PAGE));
 
@@ -2723,27 +2745,41 @@ export default function InventoryManagement({ activeSection = null }) {
 
             {openSections.stockHistory ? (
               stockHistory.length ? (
-                <div className={styles.historyList}>
-                  {stockHistory.map((item) => (
-                    <div key={item.id} className={styles.historyItem}>
-                      <div className={styles.historyTop}>
-                        <strong>{item.product_name}</strong>
-                        <span className={styles.metaChip}>
-                          {item.change_qty > 0 ? `+${item.change_qty}` : item.change_qty}
-                        </span>
-                      </div>
-                      <p>
-                        {item.before_qty} → {item.after_qty}
-                      </p>
-                      <small>
-                        {item.reason || "No reason"} • by {item.updated_by || "Unknown"}
-                      </small>
-                      <small className={styles.historyDateTime}>
-                        {formatStockHistoryDateTime(item.created_at)}
-                      </small>
+                <>
+                  <input
+                    type="search"
+                    className={`${styles.searchInput} ${styles.historySearchInput}`}
+                    value={stockHistorySearch}
+                    onChange={(event) => setStockHistorySearch(event.target.value)}
+                    placeholder="Search stock history by product, reason, user, quantity, or date..."
+                  />
+
+                  {filteredStockHistory.length ? (
+                    <div className={styles.historyList}>
+                      {filteredStockHistory.map((item) => (
+                        <div key={item.id} className={styles.historyItem}>
+                          <div className={styles.historyTop}>
+                            <strong>{item.product_name}</strong>
+                            <span className={styles.metaChip}>
+                              {item.change_qty > 0 ? `+${item.change_qty}` : item.change_qty}
+                            </span>
+                          </div>
+                          <p>
+                            {item.before_qty} → {item.after_qty}
+                          </p>
+                          <small>
+                            {item.reason || "No reason"} • by {item.updated_by || "Unknown"}
+                          </small>
+                          <small className={styles.historyDateTime}>
+                            {formatStockHistoryDateTime(item.created_at)}
+                          </small>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  ) : (
+                    <div className={styles.emptyMini}>No stock history matches your search</div>
+                  )}
+                </>
               ) : (
                 <div className={styles.emptyMini}>No stock history yet</div>
               )

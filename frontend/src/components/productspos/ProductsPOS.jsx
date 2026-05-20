@@ -35,6 +35,7 @@ import {
 import { getSettings } from "../../api/settingsApi";
 import { getMe } from "../../api/authApi";
 import { getMembers } from "../../api/membersApi";
+import DashboardLoader from "../dashboard-loader/DashboardLoader";
 import styles from "./ProductsPOS.module.css";
 
 const PAYMENT_METHODS = [
@@ -788,9 +789,12 @@ export default function ProductsPOS() {
   if (loadingProducts || loadingSettings) {
     return (
       <div className={styles.posPage}>
-        <section className={styles.productsPanel}>
-          <div className={styles.stateBox}>Loading POS...</div>
-        </section>
+        <DashboardLoader
+          variant="panel"
+          label="POS"
+          title="Loading Point of Sale"
+          subtitle="Preparing products, settings, members, and active carts..."
+        />
       </div>
     );
   }

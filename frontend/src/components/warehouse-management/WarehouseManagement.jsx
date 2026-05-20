@@ -37,6 +37,7 @@ export default function WarehouseManagement({ activeSection = "actions" }) {
   const [feedback, setFeedback] = useState({ type: "", text: "" });
   const [productSearch, setProductSearch] = useState("");
   const [actionProductSearch, setActionProductSearch] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
   const [actionProductOpen, setActionProductOpen] = useState(false);
   const actionProductRef = useRef(null);
 
@@ -310,6 +311,29 @@ export default function WarehouseManagement({ activeSection = "actions" }) {
       `Product #${item.product_id || "Unknown"}`
     );
   };
+
+  const filteredHistory = useMemo(() => {
+    const term = historySearch.trim().toLowerCase();
+    if (!term) return history;
+
+    return history.filter((item) => {
+      const fields = [
+        getHistoryProductName(item),
+        getMovementLabel(item.movement_type),
+        item.movement_type,
+        item.reason,
+        item.updated_by,
+        item.before_qty,
+        item.change_qty,
+        item.after_qty,
+        item.created_at ? new Date(item.created_at).toLocaleString() : "No date"
+      ];
+
+      return fields.some((field) =>
+        String(field || "").toLowerCase().includes(term)
+      );
+    });
+  }, [history, historySearch]);
 
   const showActionsSection = activeSection === "actions";
   const showProductsSection = activeSection === "products";
@@ -734,11 +758,25 @@ export default function WarehouseManagement({ activeSection = "actions" }) {
               <FiClock className={styles.historyIcon} />
             </div>
 
+            {history.length ? (
+              <div className={styles.searchBox}>
+                <FiSearch className={styles.searchIcon} />
+                <input
+                  type="search"
+                  className={styles.searchInput}
+                  value={historySearch}
+                  onChange={(event) => setHistorySearch(event.target.value)}
+                  placeholder="Search warehouse history by product, movement, reason, user, quantity, or date..."
+                />
+              </div>
+            ) : null}
+
             <div className={styles.historyList}>
               {historyLoading ? (
                 <div className={styles.historyEmpty}>Loading history...</div>
               ) : history.length ? (
-                history.map((item) => (
+                filteredHistory.length ? (
+                filteredHistory.map((item) => (
                   <div key={item.id} className={styles.historyItem}>
                     <div className={styles.historyTop}>
                       <strong className={styles.historyProductName}>
@@ -767,6 +805,11 @@ export default function WarehouseManagement({ activeSection = "actions" }) {
                     </div>
                   </div>
                 ))
+                ) : (
+                  <div className={styles.historyEmpty}>
+                    No warehouse history matches your search
+                  </div>
+                )
               ) : (
                 <div className={styles.historyEmpty}>No warehouse history yet</div>
               )}

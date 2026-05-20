@@ -50,6 +50,7 @@ import {
   resumeCustomerOrder,
   updateCustomerOrderStatus
 } from "../../api/customerOrdersApi";
+import DashboardLoader from "../dashboard-loader/DashboardLoader";
 import CustomerOrdersAlert from "../pos/CustomerOrdersAlert";
 import CustomerOrdersDrawer from "../pos/CustomerOrdersDrawer";
 import CustomerOrderDetailsModal from "../pos/CustomerOrderDetailsModal";
@@ -102,7 +103,7 @@ const getStoredUser = () => {
   try {
     const rawUser = localStorage.getItem("user");
     return rawUser ? JSON.parse(rawUser) : null;
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -215,7 +216,7 @@ export default function POSManagement() {
     try {
       const raw = localStorage.getItem("held_customer_order_ids");
       return raw ? JSON.parse(raw) : [];
-    } catch (error) {
+    } catch {
       return [];
     }
   });
@@ -223,7 +224,7 @@ export default function POSManagement() {
     try {
       const raw = localStorage.getItem("checkout_customer_order_ids");
       return raw ? JSON.parse(raw) : [];
-    } catch (error) {
+    } catch {
       return [];
     }
   });
@@ -1723,9 +1724,12 @@ export default function POSManagement() {
   if (loadingProducts || loadingSettings) {
     return (
       <div className={styles.posPage}>
-        <section className={styles.productsPanel}>
-          <div className={styles.stateBox}>Loading POS...</div>
-        </section>
+        <DashboardLoader
+          variant="panel"
+          label="POS"
+          title="Loading Point of Sale"
+          subtitle="Preparing products, settings, members, and active carts..."
+        />
       </div>
     );
   }

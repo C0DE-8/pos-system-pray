@@ -998,6 +998,10 @@
   gap: 12px;
 }
 
+.historySearchInput {
+  margin-bottom: 12px;
+}
+
 .simpleListItem,
 .historyItem {
   border: 1px solid #e2e8f0;

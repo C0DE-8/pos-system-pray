@@ -4,6 +4,17 @@ import { getBranchSlugs, loginUser } from "../../../api/authApi";
 import styles from "./Login.module.css";
 import { Link } from "react-router-dom";
 
+const REMEMBER_LOGIN_KEY = "remembered_login";
+
+const getRememberedLogin = () => {
+  try {
+    const raw = localStorage.getItem(REMEMBER_LOGIN_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
 const clearAuthStorage = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
@@ -22,20 +33,22 @@ const isTokenValid = (token) => {
 
     const currentTimeInSeconds = Math.floor(Date.now() / 1000);
     return payload.exp > currentTimeInSeconds;
-  } catch (error) {
+  } catch {
     return false;
   }
 };
 
 export default function Login() {
   const navigate = useNavigate();
+  const rememberedLogin = getRememberedLogin();
 
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [form, setForm] = useState({
-    identifier: "",
+    identifier: rememberedLogin?.identifier || "",
     password: "",
-    branch_slug: localStorage.getItem("branch_slug") || ""
+    branch_slug: rememberedLogin?.branch_slug || localStorage.getItem("branch_slug") || ""
   });
+  const [rememberMe, setRememberMe] = useState(Boolean(rememberedLogin));
 
   const [loading, setLoading] = useState(false);
   const [branches, setBranches] = useState([]);
@@ -61,10 +74,12 @@ export default function Login() {
         const list = Array.isArray(res?.data) ? res.data : [];
         setBranches(list);
 
-        if (!form.branch_slug && list.length) {
-          setForm((prev) => ({ ...prev, branch_slug: list[0].slug }));
+        if (list.length) {
+          setForm((prev) =>
+            prev.branch_slug ? prev : { ...prev, branch_slug: list[0].slug }
+          );
         }
-      } catch (err) {
+      } catch {
         setBranches([]);
       }
     };
@@ -103,6 +118,18 @@ export default function Login() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("branch_slug", payload.branch_slug);
+
+      if (rememberMe) {
+        localStorage.setItem(
+          REMEMBER_LOGIN_KEY,
+          JSON.stringify({
+            identifier: payload.identifier,
+            branch_slug: payload.branch_slug
+          })
+        );
+      } else {
+        localStorage.removeItem(REMEMBER_LOGIN_KEY);
+      }
 
       navigate("/dashboard", { replace: true });
     } catch (err) {
@@ -198,6 +225,18 @@ export default function Login() {
           </div>
 
           {error ? <div className={styles.errorText}>{error}</div> : null}
+
+          <label className={styles.rememberOption}>
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(event) => setRememberMe(event.target.checked)}
+            />
+            <span>
+              <strong>Remember me</strong>
+              <small>Save username/email and branch on this device</small>
+            </span>
+          </label>
 
           <button type="submit" disabled={loading} className={styles.loginBtn}>
             {loading ? "Logging in..." : "Login to Dashboard"}
