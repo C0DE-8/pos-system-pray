@@ -1042,6 +1042,11 @@
   line-height: 1.5;
 }
 
+.historyDateTime {
+  color: #334155;
+  font-weight: 700;
+}
+
 .paginationWrap {
   display: flex;
   justify-content: space-between;

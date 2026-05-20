@@ -159,6 +159,21 @@ const getProductAmountText = (product) => {
   return `₦${Number(product.price || 0).toLocaleString()}`;
 };
 
+const formatStockHistoryDateTime = (value) => {
+  if (!value) return "No date";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "No date";
+
+  return date.toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+};
+
 const getProductUnitLabel = (unit) => {
   if (!unit) return "No unit";
   if (unit.short_name) return `${unit.name} (${unit.short_name})`;
@@ -2722,6 +2737,9 @@ export default function InventoryManagement({ activeSection = null }) {
                       </p>
                       <small>
                         {item.reason || "No reason"} • by {item.updated_by || "Unknown"}
+                      </small>
+                      <small className={styles.historyDateTime}>
+                        {formatStockHistoryDateTime(item.created_at)}
                       </small>
                     </div>
                   ))}
