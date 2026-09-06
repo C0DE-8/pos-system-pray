@@ -53,6 +53,9 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [branches, setBranches] = useState([]);
   const [error, setError] = useState("");
+  const [branchLoading, setBranchLoading] = useState(true);
+  const [branchError, setBranchError] = useState("");
+  const [branchAttempt, setBranchAttempt] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -68,24 +71,34 @@ export default function Login() {
   }, [navigate]);
 
   useEffect(() => {
+    let active = true;
     const fetchBranchSlugs = async () => {
+      setBranchLoading(true);
+      setBranchError("");
       try {
         const res = await getBranchSlugs();
+        if (!active) return;
         const list = Array.isArray(res?.data) ? res.data : [];
+        if (!list.length) setBranchError("No active branches available. Contact your manager.");
         setBranches(list);
 
         if (list.length) {
           setForm((prev) =>
-            prev.branch_slug ? prev : { ...prev, branch_slug: list[0].slug }
+            list.some((branch) => branch.slug === prev.branch_slug) ? prev : { ...prev, branch_slug: list[0].slug }
           );
         }
       } catch {
+        if (!active) return;
         setBranches([]);
+        setBranchError("We couldn’t load your branches. Retry or enter your branch code below.");
+      } finally {
+        if (active) setBranchLoading(false);
       }
     };
 
     fetchBranchSlugs();
-  }, []);
+    return () => { active = false; };
+  }, [branchAttempt]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -143,13 +156,18 @@ export default function Login() {
   if (checkingAuth) {
     return (
       <div className={styles.loginPage}>
-        <div className={styles.bgGlowOne}></div>
-        <div className={styles.bgGlowTwo}></div>
-        <div className={styles.bgGrid}></div>
-
+      <section className={styles.story} aria-label="Pray Restaurant and Lounge">
+        <div className={styles.wordmark}>PRAY <span>RESTAURANT & LOUNGE</span></div>
+        <div className={styles.storyContent}>
+          <p className={styles.eyebrow}>THE ART OF GOOD SERVICE</p>
+          <h2>Every table.<br />Every detail.<br /><em>Beautifully served.</em></h2>
+          <p>Your floor, your orders, your team.<br />One considered space to bring it all together.</p>
+        </div>
+        <div className={styles.storyFooter}><span>POINT OF SALE</span><span>Made for hospitality ↗</span></div>
+      </section>
         <div className={styles.loginCard}>
           <div className={styles.brand}>
-            <div className={styles.logoCircle}>🎮</div>
+            <div className={styles.logoCircle} aria-hidden="true">P<span>✦</span></div>
             <h1>Pray Restaurant & Lounge</h1>
             <p>Checking session...</p>
           </div>
@@ -160,22 +178,28 @@ export default function Login() {
 
   return (
     <div className={styles.loginPage}>
-      <div className={styles.bgGlowOne}></div>
-      <div className={styles.bgGlowTwo}></div>
-      <div className={styles.bgGrid}></div>
-
+      <section className={styles.story} aria-label="Pray Restaurant and Lounge">
+        <div className={styles.wordmark}>PRAY <span>RESTAURANT & LOUNGE</span></div>
+        <div className={styles.storyContent}>
+          <p className={styles.eyebrow}>THE ART OF GOOD SERVICE</p>
+          <h2>Every table.<br />Every detail.<br /><em>Beautifully served.</em></h2>
+          <p>Your floor, your orders, your team.<br />One considered space to bring it all together.</p>
+        </div>
+        <div className={styles.storyFooter}><span>POINT OF SALE</span><span>Made for hospitality ↗</span></div>
+      </section>
         <div className={styles.loginCard}>
           <div className={styles.brand}>
-            <div className={styles.logoCircle}>🎮</div>
-            <h1>Pray Restaurant & Lounge</h1>
-            <p>Login with your username/email, password and branch</p>
+            <div className={styles.logoCircle} aria-hidden="true">P<span>✦</span></div>
+            <p className={styles.eyebrow}>YOUR SERVICE STARTS HERE</p>
+            <h1>Welcome back.</h1>
+            <p>Choose your branch and sign in to your workspace.</p>
           </div>
 
         <form onSubmit={handleLogin} className={styles.form}>
           <div className={styles.formGroup}>
             <label htmlFor="identifier">Username or Email</label>
             <div className={styles.inputWrap}>
-              <span className={styles.inputIcon}>👤</span>
+              <span className={styles.inputIcon}>○</span>
               <input
                 id="identifier"
                 type="text"
@@ -183,6 +207,7 @@ export default function Login() {
                 value={form.identifier}
                 onChange={handleChange}
                 placeholder="Enter your username or email"
+                required
                 autoComplete="username"
               />
             </div>
@@ -191,7 +216,7 @@ export default function Login() {
           <div className={styles.formGroup}>
             <label htmlFor="password">Password</label>
             <div className={styles.inputWrap}>
-              <span className={styles.inputIcon}>🔒</span>
+              <span className={styles.inputIcon}>◇</span>
               <input
                 id="password"
                 type="password"
@@ -199,32 +224,35 @@ export default function Login() {
                 value={form.password}
                 onChange={handleChange}
                 placeholder="Enter your password"
+                required
                 autoComplete="current-password"
               />
             </div>
           </div>
 
           <div className={styles.formGroup}>
-            <label htmlFor="branch_slug">Branch Slug</label>
+            <label htmlFor="branch_slug">Your branch</label>
             <div className={styles.inputWrap}>
-              <span className={styles.inputIcon}>🏬</span>
-              <select
+              <span className={styles.inputIcon}>⌂</span>
+              {branchError ? <input id="branch_slug" name="branch_slug" value={form.branch_slug} onChange={handleChange} placeholder="Enter branch code" required /> : <select
                 id="branch_slug"
                 name="branch_slug"
                 value={form.branch_slug}
                 onChange={handleChange}
               >
-                <option value="">Select branch</option>
+                <option value="">{branchLoading ? "Loading branches…" : "Select branch"}</option>
                 {branches.map((branch) => (
                   <option key={`${branch.business_id}-${branch.slug}`} value={branch.slug}>
-                    {branch.business_name} - {branch.name} ({branch.slug})
+                    {branch.name} · {branch.business_name}
                   </option>
                 ))}
-              </select>
+              </select>}
             </div>
           </div>
 
-          {error ? <div className={styles.errorText}>{error}</div> : null}
+          {branchError && <div className={styles.branchNotice} role="status">{branchError} <button type="button" disabled={branchLoading} onClick={() => setBranchAttempt((value) => value + 1)}>Try again</button></div>}
+
+          {error ? <div role="alert" className={styles.errorText}>{error}</div> : null}
 
           <label className={styles.rememberOption}>
             <input
@@ -238,11 +266,11 @@ export default function Login() {
             </span>
           </label>
 
-          <button type="submit" disabled={loading} className={styles.loginBtn}>
-            {loading ? "Logging in..." : "Login to Dashboard"}
+          <button type="submit" disabled={loading || branchLoading || !form.branch_slug} className={styles.loginBtn}>
+            {loading ? "Logging in..." : "Open workspace →"}
           </button>
           <Link to="/clock" className={styles.clockLink}>
-            Go to Clock In / Clock Out
+            Staff time clock ↗
           </Link>
         </form>
       </div>

@@ -1,5 +1,5 @@
 .sidebar {
-  background: #0f172a;
+  background: #173d32;
   color: #ffffff;
   padding: 24px 18px;
   display: flex;
@@ -82,7 +82,7 @@
   width: 100%;
   border: none;
   background: transparent;
-  color: #e2e8f0;
+  color: #e1e3d8;
   text-align: left;
   padding: 12px 14px;
   border-radius: 12px;
@@ -100,7 +100,7 @@
 }
 
 .activeNavItem {
-  background: #2563eb;
+  background: #28634c;
   color: #ffffff;
 }
 
@@ -161,7 +161,7 @@
 }
 
 .activeSubmenuItem {
-  background: rgba(37, 99, 235, 0.3);
+  background: rgba(40, 99, 76, 0.3);
   color: #ffffff;
   box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.28);
 }
@@ -244,3 +244,10 @@
     padding-left: 10px;
   }
 }
+
+.logoBox h2 { font-family: Georgia, serif; font-size: 34px; font-weight: 400; letter-spacing: .14em; color: #e4cd96; }
+.logoBox p { font-size: 11px; line-height: 1.8; color: #d4dccd; }
+.logoBox small { display: block; margin-top: 12px; font-size: 10px; color: #a8b9aa; }
+.navMenu { gap: 5px; }
+.activeNavItem, .activeNavItem:hover { background: #ddc68f; color: #173d32; font-weight: 700; }
+.activeSubmenuItem { background: #ffffff14; box-shadow: inset 3px 0 #ddc68f; }

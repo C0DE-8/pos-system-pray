@@ -5,33 +5,26 @@ const { query } = require("../config/db");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
+const { createBranchDirectory, TRANSIENT_ERRORS } = require("../services/branchDirectory");
+const listBranches = createBranchDirectory(query);
 
 // /api/auth/branch-slugs - get active branch slugs for login selector
 router.get("/branch-slugs", async (req, res) => {
   try {
-    const rows = await query(
-      `
-      SELECT
-        bb.slug,
-        bb.name,
-        bb.business_id,
-        b.name AS business_name
-      FROM business_branches bb
-      JOIN businesses b ON b.id = bb.business_id
-      WHERE bb.is_active = 1
-        AND b.is_active = 1
-      ORDER BY b.name ASC, bb.name ASC
-      `
-    );
+    const rows = await listBranches();
+    res.set("Cache-Control", "no-store");
 
     return res.json({
       success: true,
       data: rows
     });
   } catch (error) {
-    return res.status(500).json({
+    console.error("Branch directory lookup failed", { code: error.code, message: error.message });
+    const transient = TRANSIENT_ERRORS.has(error.code);
+    if (transient) res.set("Retry-After", "2");
+    return res.status(transient ? 503 : 500).json({
       success: false,
-      message: error.message
+      message: "Branches are temporarily unavailable. Please try again."
     });
   }
 });

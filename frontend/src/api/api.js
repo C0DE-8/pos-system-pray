@@ -1,9 +1,9 @@
 // src/api/api.js
 import axios from "axios";
 
-// https://api.pos.adsoforion.com/ https://api.pray-pos.copupbid.com/api
+
 const API = axios.create({
-  baseURL: "https://api.pray-pos.copupbid.com/api"
+  baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? "/api" : "https://api.pray-pos.copupbid.com/api")
 });
 
 API.interceptors.request.use(
@@ -14,11 +14,11 @@ API.interceptors.request.use(
 
     try {
       user = rawUser ? JSON.parse(rawUser) : null;
-    } catch (error) {
+    } catch {
       user = null;
     }
 
-    if (token) {
+    if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -51,7 +51,7 @@ API.interceptors.request.use(
 API.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !String(error.config?.url || "").startsWith("/auth/")) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/";

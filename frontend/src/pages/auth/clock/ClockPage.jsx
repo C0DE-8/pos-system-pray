@@ -24,7 +24,7 @@ const isTokenValid = (token) => {
 
     const currentTimeInSeconds = Math.floor(Date.now() / 1000);
     return payload.exp > currentTimeInSeconds;
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -42,6 +42,7 @@ export default function ClockPage() {
   const [loading, setLoading] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [branches, setBranches] = useState([]);
+  const [branchError, setBranchError] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -64,10 +65,12 @@ export default function ClockPage() {
         const res = await getBranchSlugs();
         const list = Array.isArray(res?.data) ? res.data : [];
         setBranches(list);
-        if (!form.branch_slug && list.length) {
-          setForm((prev) => ({ ...prev, branch_slug: list[0].slug }));
+        if (!list.length) setBranchError("No active branches available. Contact your manager.");
+        if (list.length) {
+          setForm((prev) => list.some(branch => branch.slug === prev.branch_slug) ? prev : ({ ...prev, branch_slug: list[0].slug }));
         }
-      } catch (err) {
+      } catch {
+        setBranchError("Branches could not be loaded. Enter your branch code to continue.");
         setBranches([]);
       }
     };
@@ -205,10 +208,10 @@ export default function ClockPage() {
             </div>
 
             <div className={styles.formGroup}>
-              <label htmlFor="branch_slug">Branch Slug</label>
+              <label htmlFor="branch_slug">Your branch</label>
               <div className={styles.inputWrap}>
                 <span className={styles.inputIcon}>🏬</span>
-                <select
+                {branchError ? <input id="branch_slug" name="branch_slug" value={form.branch_slug} onChange={handleChange} placeholder="Enter branch code" required /> : <select
                   id="branch_slug"
                   name="branch_slug"
                   value={form.branch_slug}
@@ -220,10 +223,11 @@ export default function ClockPage() {
                       {branch.business_name} - {branch.name} ({branch.slug})
                     </option>
                   ))}
-                </select>
+                </select>}
               </div>
             </div>
 
+            {branchError && <p role="status" className={styles.errorText}>{branchError}</p>}
             {error ? <div className={styles.errorText}>{error}</div> : null}
             {success ? <div className={styles.successText}>{success}</div> : null}
 
@@ -247,6 +251,7 @@ export default function ClockPage() {
               <span className={styles.roleBadge}>{clockedUser?.role}</span>
             </div>
 
+            {branchError && <p role="status" className={styles.errorText}>{branchError}</p>}
             {error ? <div className={styles.errorText}>{error}</div> : null}
             {success ? <div className={styles.successText}>{success}</div> : null}
 

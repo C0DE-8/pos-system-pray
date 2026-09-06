@@ -11,7 +11,7 @@
 
 .panelHeader h3 {
   margin: 0;
-  color: #0f172a;
+  color: #173d32;
   font-size: 18px;
 }
 
@@ -23,8 +23,8 @@
 
 .actionBtn {
   border: none;
-  background: #e2e8f0;
-  color: #0f172a;
+  background: #e1e3d8;
+  color: #173d32;
   padding: 12px 16px;
   border-radius: 12px;
   cursor: pointer;

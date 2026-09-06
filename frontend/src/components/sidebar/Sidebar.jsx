@@ -104,8 +104,8 @@ export default function Sidebar({
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""}`}>
       <div className={styles.topArea}>
         <div className={styles.logoBox}>
-          <h2>{collapsed ? "PRL" : "Pray Restaurant"}</h2>
-          {!collapsed && <p>{role}</p>}
+          <h2>{collapsed ? "P" : "PRAY"}</h2>
+          {!collapsed && <p>Restaurant & Lounge<br /><small>{role} workspace</small></p>}
         </div>
 
         <button

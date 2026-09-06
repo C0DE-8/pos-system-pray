@@ -9,9 +9,26 @@ export const loginUser = async (payload) => {
   return data;
 };
 
-export const getBranchSlugs = async () => {
-  const { data } = await API.get("/auth/branch-slugs");
-  return data;
+// Share concurrent requests (including StrictMode mounts). Retry only safe reads.
+let branchRequest;
+export const getBranchSlugs = () => {
+  if (branchRequest) return branchRequest;
+  branchRequest = (async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const { data } = await API.get("/auth/branch-slugs", { timeout: 8000 });
+        if (!data?.success || !Array.isArray(data.data)) {
+          throw new Error("Unable to load branches. Please try again.");
+        }
+        return data;
+      } catch (error) {
+        const status = error.response?.status;
+        if (attempt === 2 || (status && status !== 429 && status < 500)) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+      }
+    }
+  })().finally(() => { branchRequest = null; });
+  return branchRequest;
 };
 
 export const getSavedBranchSlug = () => {
@@ -47,7 +64,7 @@ export const getClockUser = () => {
   const raw = localStorage.getItem(CLOCK_USER_KEY);
   try {
     return raw ? JSON.parse(raw) : null;
-  } catch (error) {
+  } catch {
     return null;
   }
 };

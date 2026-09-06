@@ -15,13 +15,14 @@ export default function Navbar({
   return (
     <header className={styles.topbar}>
       <div className={styles.left}>
+        <p className={styles.eyebrow}>PRAY / RESTAURANT & LOUNGE</p>
         <h1>{title}</h1>
       </div>
 
       <div className={styles.right}>
         {actions ? <div className={styles.alertActions}>{actions}</div> : null}
 
-        <button className={styles.refreshBtn} onClick={onRefresh}>
+        <button className={styles.refreshBtn} onClick={onRefresh} disabled={refreshing}>
           <FiRefreshCw className={refreshing ? styles.spin : ""} />
           <span>{refreshing ? "Refreshing..." : "Refresh"}</span>
         </button>

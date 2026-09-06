@@ -1,71 +1,9 @@
-/* Remove default browser spacing */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-/* Make app take full screen */
-html, body, #root {
-  width: 100%;
-  height: 100%;
-}
-
-/* Optional global font */
-body {
-  font-family: Arial, Helvetica, sans-serif;
-  background: #0f172a;
-  color: white;
-}
-
-/* Shared card surface motion across CSS-module components */
-:where(
-  [class*="card"],
-  [class*="Card"],
-  [class*="panel"],
-  [class*="Panel"],
-  [class*="item"],
-  [class*="Item"],
-  [class*="tile"],
-  [class*="Tile"]
-):not(button):not(input):not(select):not(textarea):not(label):not([class*="Header"]):not([class*="Head"]):not([class*="Top"]):not([class*="Icon"]):not([class*="Text"]):not([class*="Btn"]):not([class*="btn"]):not([class*="Modal"]):not([class*="modal"]) {
-  transition:
-    transform 180ms ease,
-    box-shadow 180ms ease,
-    border-color 180ms ease,
-    background-color 180ms ease;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  :where(
-    [class*="card"],
-    [class*="Card"],
-    [class*="panel"],
-    [class*="Panel"],
-    [class*="item"],
-    [class*="Item"],
-    [class*="tile"],
-    [class*="Tile"]
-  ):not(button):not(input):not(select):not(textarea):not(label):not([class*="Header"]):not([class*="Head"]):not([class*="Top"]):not([class*="Icon"]):not([class*="Text"]):not([class*="Btn"]):not([class*="btn"]):not([class*="Modal"]):not([class*="modal"]):hover {
-    transform: translateY(-3px);
-    border-color: rgba(59, 130, 246, 0.28);
-    box-shadow:
-      0 18px 42px rgba(15, 23, 42, 0.12),
-      0 0 26px rgba(59, 130, 246, 0.13);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  :where(
-    [class*="card"],
-    [class*="Card"],
-    [class*="panel"],
-    [class*="Panel"],
-    [class*="item"],
-    [class*="Item"],
-    [class*="tile"],
-    [class*="Tile"]
-  ):not(button):not(input):not(select):not(textarea):not(label) {
-    transition: none;
-  }
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #root { width: 100%; min-height: 100%; }
+body { font-family: 'Avenir Next', 'Segoe UI', Arial, sans-serif; background: #f6f5ef; color: #20382e; -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font-family: inherit; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button { touch-action: manipulation; }
+:focus-visible { outline: 3px solid #ad8641; outline-offset: 3px; }
+::selection { background: #ddc68f; color: #173d32; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
